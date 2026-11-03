@@ -95,7 +95,11 @@ Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を�
 | category_id | BIGINT UNSIGNED (FK → categories, null 可) | null は月全体の予算 |
 | amount | INT UNSIGNED | 予算額(円)。1 以上 |
 
-- 月 + カテゴリの組み合わせは一意にする（月全体の予算は category_id が null のため、アプリ側でも重複を防ぐ）。
+- 月 + カテゴリの組み合わせは一意にする。月全体の予算（category_id が null）も重複しないよう、null を 0 に置き換えた生成列 `category_key` に一意制約を付けている。
+- `budgets.month` は必ず1日（CHECK 制約）。
+- 収支の種別とカテゴリの種別が一致しない行は、複合外部キー `(category_id, type)` により DB が拒否する。
+- 使用中のカテゴリ（収支・予算で使われているもの）は DB が削除を拒否する。アプリ側で、使用中の場合は分かりやすいメッセージを出す。
+- 実際の定義は [db/init/01_schema.sql](../db/init/01_schema.sql)。初期カテゴリは `02_categories.sql`、サンプルデータは `03_sample_data.sql`。
 - 金額は円単位の整数で保持する（小数誤差を避ける）。種別(type)で収入/支出を表すため、amount は常に正の値。
 - 集計（月別・週別・カテゴリ別）は、SQL の集計クエリ（GROUP BY）で行う。週は月曜始まり（`WEEK(date, 1)` などで集計）。
 - テーブルは SQL ファイルで管理し、Docker の初回起動時に自動で作成する。
