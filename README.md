@@ -15,12 +15,14 @@
 |---|---|
 | フロントエンド | Next.js (App Router) / React / TypeScript |
 | スタイル | Tailwind CSS |
-| バックエンド/DB | Supabase (PostgreSQL) |
-| ホスティング | Vercel（予定） |
+| データベース | MySQL 8.4（Docker で起動） |
+| DB アクセス | mysql2 |
+
+ローカルで動かすアプリです（公開 URL はありません）。
 
 ## セットアップ
 
-必要なもの: Node.js 20 以上、[Supabase](https://supabase.com/) のアカウント
+必要なもの: Node.js 20 以上、Docker（Docker Desktop）
 
 1. 依存パッケージをインストールする
 
@@ -28,18 +30,19 @@
    npm install
    ```
 
-2. Supabase でプロジェクトを作成し、Project URL と anon (publishable) key を控える
-3. `.env.example` を `.env.local` にコピーして、値を設定する
+2. MySQL を起動する（初回はイメージのダウンロードに時間がかかります）
 
    ```sh
-   cp .env.example .env.local
+   docker compose up -d
    ```
 
-4. 開発サーバーを起動し、http://localhost:3000 を開く。「接続できました」と表示されれば成功
+3. 開発サーバーを起動し、http://localhost:3000 を開く。「接続できました（MySQL 8.x）」と表示されれば成功
 
    ```sh
    npm run dev
    ```
+
+接続先を変えたいときは、`.env.example` を `.env.local` にコピーして値を書き換えます（デフォルトは `docker-compose.yml` と同じ値なので、通常は不要です）。
 
 ## コマンド
 
@@ -48,3 +51,6 @@
 | `npm run dev` | 開発サーバーを起動 |
 | `npm run build` | 本番ビルド |
 | `npm run lint` | ESLint を実行 |
+| `docker compose up -d` | MySQL を起動 |
+| `docker compose down` | MySQL を停止（データは残る） |
+| `docker compose down -v` | MySQL を停止し、データも削除 |

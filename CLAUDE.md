@@ -41,9 +41,11 @@
 - フックが拒否した場合は回避せず、ルールに沿ってやり直す（Issue を作る等）。
 
 ## 7. 技術構成
-- Next.js (App Router) + React + TypeScript + Tailwind CSS / Supabase (PostgreSQL) / Vercel。認証は使わない（1人専用）。要件は `docs/requirements.md`。
+- Next.js (App Router) + React + TypeScript + Tailwind CSS / MySQL 8.4（Docker）+ mysql2（SQL を直接書く）。認証は使わない（1人専用）。ローカルのみで動かし、公開 URL は作らない。要件は `docs/requirements.md`。
 - **Next.js のコードを書く前に、`node_modules/next/dist/docs/` の該当ガイドを読む**（このバージョンは `cacheComponents` が有効で、従来の知識と異なる。例: `export const dynamic` は使えず、リクエスト時の処理は `await connection()` + `<Suspense>`）。詳細は `AGENTS.md`。
-- ソースは `src/`、Supabase 関連は `src/lib/supabase/`。パスエイリアスは `@/*` = `src/*`。
+- ソースは `src/`、DB 関連は `src/lib/db/`（mysql2 はサーバー側のコードからだけ使う）。パスエイリアスは `@/*` = `src/*`。
+- DB の起動: `docker compose up -d`（MySQL はポート 3306、接続情報は `docker-compose.yml` と `.env.example`）。
 - 開発サーバー: `npm run dev`（http://localhost:3000）。変更後は `npm run lint` と `npm run build` を通す。
-- Supabase の接続情報は `.env.local`（Git に含めない）。キーを増やしたら `.env.example` も更新する。
+- 接続情報を変える場合は `.env.local`（Git に含めない）に書く。環境変数を増やしたら `.env.example` も更新する。
+- SQL は必ずプレースホルダ（`?`）で実行する。文字列連結で SQL を組み立てない。
 - DB のテーブルを作るときは `docs/requirements.md` の「6. データ設計」に合わせる。変更したら要件定義書も更新する。

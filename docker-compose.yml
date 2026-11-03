@@ -1,0 +1,23 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: kakeibo-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: kakeibo
+      MYSQL_USER: kakeibo
+      MYSQL_PASSWORD: kakeibo
+      TZ: Asia/Tokyo
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - kakeibo-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u kakeibo -pkakeibo --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  kakeibo-db-data:
