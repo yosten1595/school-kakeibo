@@ -1,0 +1,2 @@
+# 改行コードは LF に統一する（Windows / Mac / Linux / Docker で差分が出ないように）
+* text=auto eol=lf
