@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 作成日 | 2026-11-03 |
-| 状態 | ドラフト（第2版）。「9. 未決定事項」を決めたら更新する |
+| 状態 | ドラフト（第3版）。「9. 未決定事項」を決めたら更新する |
 | 成果物の見せ方 | GitHub の README に、実際の画面のスクリーンショット/動画を載せる |
 
 ## 1. 目的
@@ -18,13 +18,14 @@
 | 領域 | 採用 | 備考 |
 |---|---|---|
 | フロントエンド | Next.js (App Router) + TypeScript | |
-| スタイル | Tailwind CSS | 未決定でもよい（9 参照） |
-| バックエンド/DB | Supabase（PostgreSQL） | 「スーパベース」と読む |
-| ホスティング | Vercel | 無料枠で公開できる |
+| スタイル | Tailwind CSS | 採用済み |
+| データベース | MySQL 8.4 | Docker で起動する（`docker-compose.yml`） |
+| DB アクセス | mysql2（SQL を直接書く） | Next.js のサーバー側（Server Components / Server Actions）から利用 |
+| 実行環境 | ローカルのみ | 公開 URL は作らない |
 | グラフ | Recharts など | 未決定 |
 
 - ログイン（認証）機能は作らない。1人専用のアプリとする（4.3 参照）。
-- TaskManagement（Spring Boot + フロント）とは別の構成。
+- 前のアプリ（PostgreSQL）とは別の種類のデータベースを使う。
 
 ## 4. スコープ
 ### 4.1 必須
@@ -65,44 +66,45 @@
 | カテゴリ管理 | `/categories` | 追加・編集・削除 (F-07) |
 
 ## 6. データ設計（案）
-Supabase の PostgreSQL に作成する。認証を使わないため、ユーザーを表す列は持たない。
+Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を使わないため、ユーザーを表す列は持たない。
 
 **categories**
 | 列 | 型 | 説明 |
 |---|---|---|
-| id | uuid (PK) | |
-| name | text | カテゴリ名（重複不可） |
-| type | text | `income` / `expense` |
-| created_at | timestamptz | |
+| id | BIGINT UNSIGNED (PK, AUTO_INCREMENT) | |
+| name | VARCHAR(50) | カテゴリ名（重複不可） |
+| type | ENUM('income','expense') | |
+| created_at | DATETIME | |
 
 **transactions**
 | 列 | 型 | 説明 |
 |---|---|---|
-| id | uuid (PK) | |
-| date | date | 収支の発生日 |
-| type | text | `income` / `expense` |
-| amount | integer | 金額(円)。1 以上 |
-| category_id | uuid (FK → categories) | 使用中のカテゴリは削除不可 |
-| memo | text | 任意 |
-| created_at | timestamptz | |
+| id | BIGINT UNSIGNED (PK, AUTO_INCREMENT) | |
+| date | DATE | 収支の発生日 |
+| type | ENUM('income','expense') | |
+| amount | INT UNSIGNED | 金額(円)。1 以上 |
+| category_id | BIGINT UNSIGNED (FK → categories) | 使用中のカテゴリは削除不可 |
+| memo | VARCHAR(255) | 任意 |
+| created_at | DATETIME | |
 
 **budgets**
 | 列 | 型 | 説明 |
 |---|---|---|
-| id | uuid (PK) | |
-| month | date | 対象月の1日（例: 2026-11-01） |
-| category_id | uuid (FK → categories, null 可) | null は月全体の予算 |
-| amount | integer | 予算額(円)。1 以上 |
+| id | BIGINT UNSIGNED (PK, AUTO_INCREMENT) | |
+| month | DATE | 対象月の1日（例: 2026-11-01） |
+| category_id | BIGINT UNSIGNED (FK → categories, null 可) | null は月全体の予算 |
+| amount | INT UNSIGNED | 予算額(円)。1 以上 |
 
-- 月 + カテゴリの組み合わせは一意にする。
+- 月 + カテゴリの組み合わせは一意にする（月全体の予算は category_id が null のため、アプリ側でも重複を防ぐ）。
 - 金額は円単位の整数で保持する（小数誤差を避ける）。種別(type)で収入/支出を表すため、amount は常に正の値。
-- 集計（月別・週別・カテゴリ別）は、DB の集計クエリ（または view）で行う。
+- 集計（月別・週別・カテゴリ別）は、SQL の集計クエリ（GROUP BY）で行う。週は月曜始まり（`WEEK(date, 1)` などで集計）。
+- テーブルは SQL ファイルで管理し、Docker の初回起動時に自動で作成する。
 
 ## 7. 非機能要件
 | 区分 | 要件 |
 |---|---|
-| セキュリティ | 認証がないため、公開URLを知る人は誰でもデータを読み書きできる。これを踏まえ、公開環境には実データを入れずサンプルデータだけにする（9 の #1）。API キーなどの秘密情報は Git に含めない(`.env.local`、`.gitignore` 対象) |
-| 入力検証 | 金額は 1 以上の整数、日付は必須。フロントとDB(CHECK 制約)の両方で検証 |
+| セキュリティ | 認証がないため、アプリはローカルでのみ動かし、インターネットには公開しない。DB の接続情報は `.env.local`（`.gitignore` 対象）に置き、Git に含めない。SQL は必ずプレースホルダ（`?`）で実行し、SQL インジェクションを防ぐ |
+| 入力検証 | 金額は 1 以上の整数、日付は必須。画面側（サーバー側）と DB(CHECK 制約)の両方で検証 |
 | レスポンシブ | スマホ幅(375px〜)とPC幅の両方で崩れない |
 | 性能 | 一覧・集計は期間を絞って取得し、通常の操作で 1 秒以内に表示 |
 | ユーザビリティ | 収支の登録は 3 操作以内で完了。エラーは画面上に日本語で表示 |
@@ -112,7 +114,7 @@ Supabase の PostgreSQL に作成する。認証を使わないため、ユー�
 - **進め方**: 縦に薄く作る。まず「収支を1件登録 → 一覧に出る」を動かし、その後に集計・予算・推移を足す。
 - **Git 運用**: [CLAUDE.md](../CLAUDE.md) のとおり(Issue ファースト、`<type>/<番号>-<説明>` ブランチ、PR 経由、マージは本人)。
 - **Issue の切り方(案)**:
-  1. 技術構成の決定とプロジェクト初期化(Next.js + Supabase 接続)
+  1. 技術構成の決定とプロジェクト初期化(Next.js + Docker の MySQL に接続)
   2. DB 設計とテーブル作成、初期カテゴリ・サンプルデータ
   3. 収支の登録・一覧・編集・削除 (F-01〜F-03)
   4. 月次サマリーと月切り替え (F-04, F-06)
@@ -122,22 +124,19 @@ Supabase の PostgreSQL に作成する。認証を使わないため、ユー�
   8. 予算設定と超過警告 (F-08, F-09)
   9. 月別/週別の推移グラフ (F-11, F-12)
   10. カテゴリ別の推移 (F-13)
-  11. Vercel へのデプロイ
-  12. README 整備(スクリーンショット・動画)
-- **README に載せるもの**: アプリの概要、使用技術、機能一覧、スクリーンショット/動画(`docs/images/`)、セットアップ手順、公開URL。
+  11. README 整備(スクリーンショット・動画)
+- **README に載せるもの**: アプリの概要、使用技術、機能一覧、スクリーンショット/動画(`docs/images/`)、セットアップ手順。公開 URL は作らないので、画面はスクリーンショットと動画で示す。
   スクリーンショットは機能ができるたびに撮る。最後にまとめて撮ると、途中の画面が残らない。
 
 ## 9. 未決定事項
 | # | 内容 | 決めるタイミング |
 |---|---|---|
-| 1 | 認証なしで公開する範囲。案: 公開URLはサンプルデータのみ、実データはローカルで使う | デプロイの Issue |
-| 2 | 予算の警告しきい値（案: 80%で注意、100%超で警告） | 予算の Issue |
-| 3 | 予算は「全体」と「カテゴリ別」の両方を持つ案でよいか | 予算の Issue |
-| 4 | CSS は Tailwind CSS でよいか | 初期化の Issue |
-| 5 | グラフライブラリ(Recharts 等) | グラフの Issue |
-| 6 | テストをどこまで書くか | 初期化の Issue |
+| 1 | 予算の警告しきい値（案: 80%で注意、100%超で警告） | 予算の Issue |
+| 2 | 予算は「全体」と「カテゴリ別」の両方を持つ案でよいか | 予算の Issue |
+| 3 | グラフライブラリ(Recharts 等) | グラフの Issue |
+| 4 | テストをどこまで書くか | 初期化の Issue |
 
 ## 10. 完了の定義
 - F-01〜F-13 が動作する
-- Vercel 上で公開され、URL からアクセスできる
+- `docker compose up -d` と `npm run dev` だけで、ローカルで動作する
 - README に概要・技術・スクリーンショット/動画・セットアップ手順が載っている
