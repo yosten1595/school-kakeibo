@@ -1,7 +1,6 @@
 # school-kakeibo – Claude Code 作業ルール
 
 スクール課題の家計簿アプリ。以下は厳守するルール。例外は認めない。迷ったら作業を止めてユーザーに確認する。
-（技術スタックは未決定。決まったら「7. 技術構成」を埋める。）
 
 ## 1. Issue ファースト
 - コード・ドキュメントの変更を伴う作業は、**必ず先に GitHub Issue を作る**（既存 Issue があればそれを使う）。
@@ -42,4 +41,9 @@
 - フックが拒否した場合は回避せず、ルールに沿ってやり直す（Issue を作る等）。
 
 ## 7. 技術構成
-- 未決定（TaskManagement とは別の構成にする）。
+- Next.js (App Router) + React + TypeScript + Tailwind CSS / Supabase (PostgreSQL) / Vercel。認証は使わない（1人専用）。要件は `docs/requirements.md`。
+- **Next.js のコードを書く前に、`node_modules/next/dist/docs/` の該当ガイドを読む**（このバージョンは `cacheComponents` が有効で、従来の知識と異なる。例: `export const dynamic` は使えず、リクエスト時の処理は `await connection()` + `<Suspense>`）。詳細は `AGENTS.md`。
+- ソースは `src/`、Supabase 関連は `src/lib/supabase/`。パスエイリアスは `@/*` = `src/*`。
+- 開発サーバー: `npm run dev`（http://localhost:3000）。変更後は `npm run lint` と `npm run build` を通す。
+- Supabase の接続情報は `.env.local`（Git に含めない）。キーを増やしたら `.env.example` も更新する。
+- DB のテーブルを作るときは `docs/requirements.md` の「6. データ設計」に合わせる。変更したら要件定義書も更新する。
