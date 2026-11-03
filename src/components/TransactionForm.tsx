@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { startTransition, useActionState, useState } from "react";
+import { useState, useTransition } from "react";
 import type { Category, TransactionFormState } from "@/lib/types";
 
 type Props = {
-  action: (prev: TransactionFormState, formData: FormData) => Promise<TransactionFormState>;
+  action: (formData: FormData) => Promise<TransactionFormState>;
   categories: Category[];
   initial: NonNullable<TransactionFormState["values"]>;
   submitLabel: string;
-  cancelHref: string;
+  onSaved: (month: string) => void;
+  onCancel: () => void;
 };
 
 const inputClass =
@@ -23,15 +23,18 @@ function FieldError({ message }: { message?: string }) {
   ) : null;
 }
 
-export function TransactionForm({ action, categories, initial, submitLabel, cancelHref }: Props) {
-  const [state, formAction, pending] = useActionState<TransactionFormState, FormData>(action, {
-    values: initial,
-  });
-  const values = state.values ?? initial;
-  const errors = state.errors ?? {};
-
-  const [type, setType] = useState(values.type === "income" ? "income" : "expense");
-  const [categoryId, setCategoryId] = useState(values.categoryId);
+export function TransactionForm({
+  action,
+  categories,
+  initial,
+  submitLabel,
+  onSaved,
+  onCancel,
+}: Props) {
+  const [errors, setErrors] = useState<NonNullable<TransactionFormState["errors"]>>({});
+  const [pending, startTransition] = useTransition();
+  const [type, setType] = useState(initial.type === "income" ? "income" : "expense");
+  const [categoryId, setCategoryId] = useState(initial.categoryId);
 
   const options = categories.filter((c) => c.type === type);
 
@@ -45,17 +48,23 @@ export function TransactionForm({ action, categories, initial, submitLabel, canc
 
   return (
     <form
-      // form の action 属性を使うと、送信後に入力欄が初期化されてしまう（エラー時に入力が消える）。
-      // そのため onSubmit で Server Action を呼び、入力欄はそのまま残す。
+      // 入力欄は React の管理に任せ、送信後に入力が消えないよう onSubmit で Server Action を呼ぶ
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        startTransition(() => formAction(formData));
+        startTransition(async () => {
+          const result = await action(formData);
+          if (result.savedMonth) onSaved(result.savedMonth);
+          else setErrors(result.errors ?? {});
+        });
       }}
       className="flex flex-col gap-5"
     >
       {errors.form && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-red-800 dark:bg-red-950 dark:text-red-200">
+        <p
+          role="alert"
+          className="rounded-md bg-red-50 p-3 text-red-800 dark:bg-red-950 dark:text-red-200"
+        >
           {errors.form}
         </p>
       )}
@@ -84,7 +93,14 @@ export function TransactionForm({ action, categories, initial, submitLabel, canc
 
       <div>
         <label htmlFor="date" className="mb-1 block font-medium">日付</label>
-        <input id="date" name="date" type="date" required defaultValue={values.date} className={inputClass} />
+        <input
+          id="date"
+          name="date"
+          type="date"
+          required
+          defaultValue={initial.date}
+          className={inputClass}
+        />
         <FieldError message={errors.date} />
       </div>
 
@@ -98,7 +114,7 @@ export function TransactionForm({ action, categories, initial, submitLabel, canc
           min={1}
           step={1}
           required
-          defaultValue={values.amount}
+          defaultValue={initial.amount}
           className={inputClass}
         />
         <FieldError message={errors.amount} />
@@ -124,7 +140,14 @@ export function TransactionForm({ action, categories, initial, submitLabel, canc
 
       <div>
         <label htmlFor="memo" className="mb-1 block font-medium">メモ（任意）</label>
-        <input id="memo" name="memo" type="text" maxLength={255} defaultValue={values.memo} className={inputClass} />
+        <input
+          id="memo"
+          name="memo"
+          type="text"
+          maxLength={255}
+          defaultValue={initial.memo}
+          className={inputClass}
+        />
         <FieldError message={errors.memo} />
       </div>
 
@@ -136,12 +159,13 @@ export function TransactionForm({ action, categories, initial, submitLabel, canc
         >
           {pending ? "保存中..." : submitLabel}
         </button>
-        <Link
-          href={cancelHref}
-          className="rounded-md border border-zinc-300 px-4 py-2 text-center hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-zinc-300 px-4 py-2 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
           キャンセル
-        </Link>
+        </button>
       </div>
     </form>
   );

@@ -39,11 +39,6 @@ export async function listTransactionsByMonth(month: string): Promise<Transactio
   return rows.map(toTransaction);
 }
 
-export async function getTransaction(id: number): Promise<Transaction | null> {
-  const [rows] = await pool.query<TransactionRow[]>(`${SELECT_SQL} WHERE t.id = ?`, [id]);
-  return rows[0] ? toTransaction(rows[0]) : null;
-}
-
 export async function createTransaction(input: TransactionInput): Promise<number> {
   const [result] = await pool.execute<ResultSetHeader>(
     "INSERT INTO transactions (date, type, amount, category_id, memo) VALUES (?, ?, ?, ?, ?)",

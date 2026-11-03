@@ -26,6 +26,8 @@ export interface TransactionInput {
 
 // フォームの状態。エラーがあれば入力値を残して画面に戻す。
 export interface TransactionFormState {
+  /** 保存に成功したとき、その収支の月（YYYY-MM） */
+  savedMonth?: string;
   errors?: Partial<Record<"date" | "type" | "amount" | "categoryId" | "memo" | "form", string>>;
   values?: {
     date: string;

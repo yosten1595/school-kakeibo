@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
   createTransaction,
@@ -36,13 +35,12 @@ function stateOf(formData: FormData): TransactionFormState {
   };
 }
 
-function afterSave(input: TransactionInput): never {
+function saved(input: TransactionInput): TransactionFormState {
   revalidatePath("/transactions");
-  redirect(`/transactions?month=${input.date.slice(0, 7)}`);
+  return { savedMonth: input.date.slice(0, 7) };
 }
 
 export async function createTransactionAction(
-  _prev: TransactionFormState,
   formData: FormData,
 ): Promise<TransactionFormState> {
   const parsed = parseTransactionForm(formData);
@@ -52,12 +50,11 @@ export async function createTransactionAction(
   } catch (e) {
     return dbErrorToState(e, stateOf(formData));
   }
-  return afterSave(parsed.input);
+  return saved(parsed.input);
 }
 
 export async function updateTransactionAction(
   id: number,
-  _prev: TransactionFormState,
   formData: FormData,
 ): Promise<TransactionFormState> {
   const parsed = parseTransactionForm(formData);
@@ -70,7 +67,7 @@ export async function updateTransactionAction(
   } catch (e) {
     return dbErrorToState(e, stateOf(formData));
   }
-  return afterSave(parsed.input);
+  return saved(parsed.input);
 }
 
 export async function deleteTransactionAction(id: number): Promise<void> {
