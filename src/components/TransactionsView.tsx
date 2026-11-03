@@ -1,17 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Modal } from "@/components/Modal";
+import { MonthNav } from "@/components/MonthNav";
 import { TransactionForm } from "@/components/TransactionForm";
 import {
   createTransactionAction,
   deleteTransactionAction,
   updateTransactionAction,
 } from "@/app/transactions/actions";
-import { formatMonth, formatYen, shiftMonth } from "@/lib/month";
+import { formatYen } from "@/lib/month";
 import type { Category, Transaction } from "@/lib/types";
 
 type Dialog = { mode: "create" } | { mode: "edit"; transaction: Transaction } | null;
@@ -49,21 +49,7 @@ export function TransactionsView({
         </button>
       </div>
 
-      <div className="flex items-center justify-between">
-        <Link
-          href={`/transactions?month=${shiftMonth(month, -1)}`}
-          className="rounded px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          ← 前月
-        </Link>
-        <h2 className="text-lg font-semibold">{formatMonth(month)}</h2>
-        <Link
-          href={`/transactions?month=${shiftMonth(month, 1)}`}
-          className="rounded px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          翌月 →
-        </Link>
-      </div>
+      <MonthNav month={month} basePath="/transactions" />
 
       {transactions.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">

@@ -33,3 +33,9 @@ export function formatMonth(month: string): string {
 export function formatYen(amount: number): string {
   return `¥${amount.toLocaleString("ja-JP")}`;
 }
+
+/** 符号つきの金額（+ / -）。0 は符号なし */
+export function formatSignedYen(amount: number): string {
+  if (amount === 0) return formatYen(0);
+  return `${amount > 0 ? "+" : "-"}${formatYen(Math.abs(amount))}`;
+}
