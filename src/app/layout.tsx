@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -23,7 +24,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <header className="border-b border-zinc-200 dark:border-zinc-800">
+          <nav className="mx-auto flex max-w-2xl items-center gap-5 px-4 py-3">
+            <Link href="/" className="font-bold">
+              家計簿
+            </Link>
+            <Link href="/transactions" className="text-zinc-700 hover:underline dark:text-zinc-300">
+              収支一覧
+            </Link>
+          </nav>
+        </header>
+        <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
+      </body>
     </html>
   );
 }
