@@ -6,6 +6,16 @@ export interface Category {
   type: TransactionType;
 }
 
+export interface CategoryWithUsage extends Category {
+  transactionCount: number; // このカテゴリを使っている収支の件数
+  budgetCount: number; // 使っている予算の件数
+}
+
+export interface CategoryFormState {
+  errors?: Partial<Record<"name" | "type" | "form", string>>;
+  saved?: boolean;
+}
+
 export interface Transaction {
   id: number;
   date: string; // YYYY-MM-DD
