@@ -36,6 +36,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/transactions" className="text-zinc-700 hover:underline dark:text-zinc-300">
               収支一覧
             </Link>
+            <Link href="/categories" className="text-zinc-700 hover:underline dark:text-zinc-300">
+              カテゴリ
+            </Link>
           </nav>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
