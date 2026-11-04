@@ -13,7 +13,7 @@ type Props = {
 };
 
 const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900";
+  "h-[42px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900";
 
 function FieldError({ message }: { message?: string }) {
   return message ? (
@@ -128,7 +128,7 @@ export function TransactionForm({
           required
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className={inputClass}
+          className={`${inputClass} select-field`}
         >
           <option value="">選択してください</option>
           {options.map((c) => (
