@@ -16,6 +16,12 @@ export interface Transaction {
   memo: string | null;
 }
 
+export interface MonthlySummary {
+  income: number;
+  expense: number;
+  balance: number; // 収入 - 支出（赤字なら負）
+}
+
 export interface TransactionInput {
   date: string;
   type: TransactionType;

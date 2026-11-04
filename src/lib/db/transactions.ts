@@ -1,7 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
 import { monthRange } from "@/lib/month";
-import type { Transaction, TransactionInput } from "@/lib/types";
+import type { MonthlySummary, Transaction, TransactionInput } from "@/lib/types";
 
 interface TransactionRow extends RowDataPacket {
   id: number;
@@ -37,6 +37,27 @@ export async function listTransactionsByMonth(month: string): Promise<Transactio
     [start, end],
   );
   return rows.map(toTransaction);
+}
+
+interface SummaryRow extends RowDataPacket {
+  type: "income" | "expense";
+  total: string; // SUM は文字列で返る
+}
+
+/** 指定した月（"YYYY-MM"）の収入合計・支出合計・差額 */
+export async function getMonthlySummary(month: string): Promise<MonthlySummary> {
+  const { start, end } = monthRange(month);
+  const [rows] = await pool.query<SummaryRow[]>(
+    `SELECT type, SUM(amount) AS total
+     FROM transactions
+     WHERE date >= ? AND date < ?
+     GROUP BY type`,
+    [start, end],
+  );
+  const total = (type: "income" | "expense") => Number(rows.find((r) => r.type === type)?.total ?? 0);
+  const income = total("income");
+  const expense = total("expense");
+  return { income, expense, balance: income - expense };
 }
 
 export async function createTransaction(input: TransactionInput): Promise<number> {
