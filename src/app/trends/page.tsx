@@ -38,7 +38,7 @@ async function Trends({ searchParams }: { searchParams: PageProps<"/trends">["se
           </section>
           <section>
             <h2 className="mb-2 font-semibold">カテゴリ別・月別の支出</h2>
-            <YearlyCategoryTable year={year} categories={categories} months={months} />
+            <YearlyCategoryTable categories={categories} months={months} />
           </section>
         </>
       ) : (
@@ -51,8 +51,9 @@ async function Trends({ searchParams }: { searchParams: PageProps<"/trends">["se
 }
 
 export default function TrendsPage(props: PageProps<"/trends">) {
+  // 表に全桁の金額を 12 か月分並べるため、広い画面ではこのページだけ共通の幅より広げる（中央ぞろえのまま）
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 lg:mx-[calc((100%-56rem)/2)]">
       <h1 className="text-2xl font-bold">推移</h1>
       <Suspense fallback={<p>読み込み中...</p>}>
         <Trends searchParams={props.searchParams} />
