@@ -32,6 +32,13 @@ export interface MonthlySummary {
   balance: number; // 収入 - 支出（赤字なら負）
 }
 
+/** 1か月の、あるカテゴリの支出合計 */
+export interface CategoryExpense {
+  categoryId: number;
+  categoryName: string;
+  total: number;
+}
+
 export interface TransactionInput {
   date: string;
   type: TransactionType;

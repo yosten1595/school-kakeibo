@@ -17,6 +17,7 @@
 | スタイル | Tailwind CSS |
 | データベース | MySQL 8.4（Docker で起動） |
 | DB アクセス | mysql2 |
+| グラフ | Recharts |
 
 ローカルで動かすアプリです（公開 URL はありません）。
 
