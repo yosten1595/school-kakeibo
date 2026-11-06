@@ -32,6 +32,24 @@ export interface MonthlySummary {
   balance: number; // 収入 - 支出（赤字なら負）
 }
 
+/** 年間ページの、1か月分の収支 */
+export interface MonthlyTotal extends MonthlySummary {
+  month: number; // 1〜12
+}
+
+/** 1年間の、あるカテゴリの支出 */
+export interface CategoryYearlyExpense {
+  categoryId: number;
+  categoryName: string;
+  months: number[]; // 1〜12月の支出合計（長さ 12）
+  total: number;
+}
+
+export interface YearlyOverview {
+  months: MonthlyTotal[]; // 1〜12月（長さ 12）
+  categories: CategoryYearlyExpense[]; // 支出があるカテゴリのみ。年間の支出が大きい順
+}
+
 /** 1か月の、あるカテゴリの支出合計 */
 export interface CategoryExpense {
   categoryId: number;

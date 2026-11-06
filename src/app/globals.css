@@ -15,6 +15,19 @@
   --series-8: #e34948;
   --series-other: #898781;
   --chart-muted: #52514e;
+  --chart-grid: #e1e0d9;
+
+  /* 金額の濃淡（青の 1 色）。文字は背景に合わせて読める色にする */
+  --heat-1: #cde2fb;
+  --heat-2: #9ec5f4;
+  --heat-3: #6da7ec;
+  --heat-4: #256abf;
+  --heat-5: #104281;
+  --heat-1-text: #171717;
+  --heat-2-text: #171717;
+  --heat-3-text: #171717;
+  --heat-4-text: #ffffff;
+  --heat-5-text: #ffffff;
 }
 
 @theme inline {
@@ -38,8 +51,27 @@
     --series-7: #9085e9;
     --series-8: #e66767;
     --chart-muted: #c3c2b7;
+    --chart-grid: #2c2c2a;
+
+    /* ダークモードでは、背景に近い暗い色が「少ない」、明るい色が「多い」 */
+    --heat-1: #0d366b;
+    --heat-2: #184f95;
+    --heat-3: #256abf;
+    --heat-4: #5598e7;
+    --heat-5: #9ec5f4;
+    --heat-1-text: #ededed;
+    --heat-2-text: #ededed;
+    --heat-3-text: #ffffff;
+    --heat-4-text: #0a0a0a;
+    --heat-5-text: #0a0a0a;
   }
 }
+
+.heat-1 { background: var(--heat-1); color: var(--heat-1-text); }
+.heat-2 { background: var(--heat-2); color: var(--heat-2-text); }
+.heat-3 { background: var(--heat-3); color: var(--heat-3-text); }
+.heat-4 { background: var(--heat-4); color: var(--heat-4-text); }
+.heat-5 { background: var(--heat-5); color: var(--heat-5-text); }
 
 body {
   background: var(--background);

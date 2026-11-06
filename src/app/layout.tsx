@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <header className="border-b border-zinc-200 dark:border-zinc-800">
-          <nav className="mx-auto flex max-w-2xl items-center gap-5 px-4 py-3">
+          <nav className="mx-auto flex max-w-2xl flex-wrap items-center gap-x-5 gap-y-1 px-4 py-3">
             <Link href="/" className="font-bold">
               家計簿
             </Link>
@@ -35,6 +35,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <Link href="/transactions" className="text-zinc-700 hover:underline dark:text-zinc-300">
               収支一覧
+            </Link>
+            <Link href="/trends" className="text-zinc-700 hover:underline dark:text-zinc-300">
+              推移
             </Link>
             <Link href="/categories" className="text-zinc-700 hover:underline dark:text-zinc-300">
               カテゴリ
