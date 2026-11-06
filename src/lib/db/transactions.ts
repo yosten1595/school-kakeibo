@@ -1,7 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
 import { monthRange } from "@/lib/month";
-import type { MonthlySummary, Transaction, TransactionInput } from "@/lib/types";
+import type { CategoryExpense, MonthlySummary, Transaction, TransactionInput } from "@/lib/types";
 
 interface TransactionRow extends RowDataPacket {
   id: number;
@@ -58,6 +58,31 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   const income = total("income");
   const expense = total("expense");
   return { income, expense, balance: income - expense };
+}
+
+interface CategoryExpenseRow extends RowDataPacket {
+  categoryId: number;
+  categoryName: string;
+  total: string; // SUM は文字列で返る
+}
+
+/** 指定した月（"YYYY-MM"）の支出をカテゴリ別に集計し、全支出カテゴリを登録順で返す（支出なしは 0） */
+export async function getExpenseByCategory(month: string): Promise<CategoryExpense[]> {
+  const { start, end } = monthRange(month);
+  const [rows] = await pool.query<CategoryExpenseRow[]>(
+    `SELECT c.id AS categoryId, c.name AS categoryName, COALESCE(SUM(t.amount), 0) AS total
+     FROM categories c
+     LEFT JOIN transactions t ON t.category_id = c.id AND t.date >= ? AND t.date < ?
+     WHERE c.type = 'expense'
+     GROUP BY c.id, c.name
+     ORDER BY c.id`,
+    [start, end],
+  );
+  return rows.map((r) => ({
+    categoryId: r.categoryId,
+    categoryName: r.categoryName,
+    total: Number(r.total),
+  }));
 }
 
 export async function createTransaction(input: TransactionInput): Promise<number> {

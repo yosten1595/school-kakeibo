@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { ExpenseBreakdown } from "@/components/ExpenseBreakdown";
 import { MonthNav } from "@/components/MonthNav";
-import { getMonthlySummary, listTransactionsByMonth } from "@/lib/db/transactions";
+import {
+  getExpenseByCategory,
+  getMonthlySummary,
+  listTransactionsByMonth,
+} from "@/lib/db/transactions";
 import { formatSignedYen, formatYen, parseMonth } from "@/lib/month";
 
 const RECENT_COUNT = 5;
@@ -35,9 +40,10 @@ async function Dashboard({
 }) {
   await connection(); // 月の指定がないときは「今日」から今月を決めるため、毎回のリクエストで処理する
   const month = parseMonth((await searchParams).month);
-  const [summary, transactions] = await Promise.all([
+  const [summary, transactions, expenseByCategory] = await Promise.all([
     getMonthlySummary(month),
     listTransactionsByMonth(month),
+    getExpenseByCategory(month),
   ]);
   const recent = transactions.slice(0, RECENT_COUNT);
 
@@ -71,6 +77,11 @@ async function Dashboard({
             testId="summary-balance"
           />
         </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2 font-semibold">カテゴリ別の支出</h2>
+        <ExpenseBreakdown categories={expenseByCategory} expense={summary.expense} />
       </section>
 
       <section>
