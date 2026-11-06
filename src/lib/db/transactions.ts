@@ -1,7 +1,15 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
-import { monthRange } from "@/lib/month";
-import type { CategoryExpense, MonthlySummary, Transaction, TransactionInput } from "@/lib/types";
+import { monthRange, yearRange } from "@/lib/month";
+import type {
+  CategoryExpense,
+  CategoryYearlyExpense,
+  MonthlySummary,
+  MonthlyTotal,
+  Transaction,
+  TransactionInput,
+  YearlyOverview,
+} from "@/lib/types";
 
 interface TransactionRow extends RowDataPacket {
   id: number;
@@ -83,6 +91,64 @@ export async function getExpenseByCategory(month: string): Promise<CategoryExpen
     categoryName: r.categoryName,
     total: Number(r.total),
   }));
+}
+
+interface MonthlyTotalRow extends RowDataPacket {
+  month: number;
+  type: "income" | "expense";
+  total: string; // SUM は文字列で返る
+}
+
+interface CategoryMonthRow extends RowDataPacket {
+  categoryId: number;
+  categoryName: string;
+  month: number;
+  total: string; // SUM は文字列で返る
+}
+
+/** 指定した年（"YYYY"）の月別の収支と、カテゴリ別・月別の支出 */
+export async function getYearlyOverview(year: string): Promise<YearlyOverview> {
+  const { start, end } = yearRange(year);
+  const [[totalRows], [categoryRows]] = await Promise.all([
+    pool.query<MonthlyTotalRow[]>(
+      `SELECT MONTH(date) AS month, type, SUM(amount) AS total
+       FROM transactions
+       WHERE date >= ? AND date < ?
+       GROUP BY MONTH(date), type`,
+      [start, end],
+    ),
+    pool.query<CategoryMonthRow[]>(
+      `SELECT c.id AS categoryId, c.name AS categoryName, MONTH(t.date) AS month, SUM(t.amount) AS total
+       FROM transactions t
+       JOIN categories c ON c.id = t.category_id
+       WHERE t.type = 'expense' AND t.date >= ? AND t.date < ?
+       GROUP BY c.id, c.name, MONTH(t.date)`,
+      [start, end],
+    ),
+  ]);
+
+  const months: MonthlyTotal[] = Array.from({ length: 12 }, (_, i) => {
+    const total = (type: "income" | "expense") =>
+      Number(totalRows.find((r) => r.month === i + 1 && r.type === type)?.total ?? 0);
+    const income = total("income");
+    const expense = total("expense");
+    return { month: i + 1, income, expense, balance: income - expense };
+  });
+
+  const categories = new Map<number, CategoryYearlyExpense>();
+  for (const r of categoryRows) {
+    const category = categories.get(r.categoryId) ?? {
+      categoryId: r.categoryId,
+      categoryName: r.categoryName,
+      months: Array<number>(12).fill(0),
+      total: 0,
+    };
+    category.months[r.month - 1] = Number(r.total);
+    category.total += Number(r.total);
+    categories.set(r.categoryId, category);
+  }
+
+  return { months, categories: [...categories.values()].sort((a, b) => b.total - a.total) };
 }
 
 export async function createTransaction(input: TransactionInput): Promise<number> {
