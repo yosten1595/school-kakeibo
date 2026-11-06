@@ -15,12 +15,12 @@ const RECENT_COUNT = 5;
 function SummaryCard({
   label,
   value,
-  tone,
+  tone = "",
   testId,
 }: {
   label: string;
   value: string;
-  tone: string;
+  tone?: string;
   testId: string;
 }) {
   return (
@@ -47,10 +47,13 @@ async function Dashboard({
   ]);
   const recent = transactions.slice(0, RECENT_COUNT);
 
+  // ダッシュボードで色を付ける金額は差額だけ（プラスは緑、マイナスは赤、0 は色なし）
   const balanceTone =
     summary.balance < 0
       ? "text-red-700 dark:text-red-400"
-      : "text-green-700 dark:text-green-400";
+      : summary.balance > 0
+        ? "text-green-700 dark:text-green-400"
+        : "";
 
   return (
     <div className="flex flex-col gap-5">
@@ -60,13 +63,11 @@ async function Dashboard({
         <SummaryCard
           label="収入"
           value={formatYen(summary.income)}
-          tone="text-blue-700 dark:text-blue-400"
           testId="summary-income"
         />
         <SummaryCard
           label="支出"
           value={formatYen(summary.expense)}
-          tone="text-red-700 dark:text-red-400"
           testId="summary-expense"
         />
         <div className="col-span-2">
@@ -113,13 +114,7 @@ async function Dashboard({
                     </div>
                   )}
                 </div>
-                <div
-                  className={`shrink-0 font-semibold tabular-nums ${
-                    t.type === "income"
-                      ? "text-blue-700 dark:text-blue-400"
-                      : "text-red-700 dark:text-red-400"
-                  }`}
-                >
+                <div className="shrink-0 font-semibold tabular-nums">
                   {t.type === "income" ? "+" : "-"}
                   {formatYen(t.amount)}
                 </div>
