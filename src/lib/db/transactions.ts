@@ -189,6 +189,26 @@ export async function getWeeklyBreakdown(today: string, count: number): Promise<
   return { weeks, income, expense };
 }
 
+interface CategoryMonthlyRow extends RowDataPacket {
+  month: number;
+  total: string; // SUM は文字列で返る
+}
+
+/** 指定した年（"YYYY"）の、あるカテゴリの 1〜12 月の金額（長さ 12。記録のない月は 0） */
+export async function getCategoryMonthly(year: string, categoryId: number): Promise<number[]> {
+  const { start, end } = yearRange(year);
+  const [rows] = await pool.query<CategoryMonthlyRow[]>(
+    `SELECT MONTH(date) AS month, SUM(amount) AS total
+     FROM transactions
+     WHERE category_id = ? AND date >= ? AND date < ?
+     GROUP BY MONTH(date)`,
+    [categoryId, start, end],
+  );
+  const amounts = Array<number>(12).fill(0);
+  for (const r of rows) amounts[r.month - 1] = Number(r.total);
+  return amounts;
+}
+
 /** 指定した年（"YYYY"）の月別の収支と、カテゴリ別・月別の支出 */
 export async function getYearlyOverview(year: string): Promise<YearlyOverview> {
   const { start, end } = yearRange(year);

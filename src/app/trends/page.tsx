@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { TrendCategorySelect } from "@/components/TrendCategorySelect";
 import { TrendChart } from "@/components/TrendChart";
 import { WeeklyTable } from "@/components/WeeklyTable";
 import { YearlyCategoryTable } from "@/components/YearlyCategoryTable";
-import { getWeeklyBreakdown, getYearlyOverview } from "@/lib/db/transactions";
-import { parseYear, shiftYear, today } from "@/lib/month";
+import { listCategories } from "@/lib/db/categories";
+import { getCategoryMonthly, getWeeklyBreakdown, getYearlyOverview } from "@/lib/db/transactions";
+import { formatYen, parseYear, shiftYear, today } from "@/lib/month";
+import type { Category, MonthlyTotal } from "@/lib/types";
 import { addDays, formatMonthDay, formatWeekRange, weekStart } from "@/lib/week";
 
 const WEEK_COUNT = 12;
@@ -41,41 +44,103 @@ function ViewTabs({ view, year }: { view: View; year: string }) {
   );
 }
 
-function YearNav({ year }: { year: string }) {
+/** 前年・翌年への移動。選んでいるカテゴリは引き継ぐ */
+function YearNav({ year, category }: { year: string; category: Category | null }) {
   const linkClass = "rounded px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800";
+  const href = (y: string) =>
+    `/trends?${new URLSearchParams({ year: y, ...(category ? { category: String(category.id) } : {}) })}`;
   return (
     <div className="flex items-center justify-between">
-      <Link href={`/trends?year=${shiftYear(year, -1)}`} className={linkClass}>
+      <Link href={href(shiftYear(year, -1))} className={linkClass}>
         ← 前年
       </Link>
       <h2 className="text-lg font-semibold">{year}年</h2>
-      <Link href={`/trends?year=${shiftYear(year, 1)}`} className={linkClass}>
+      <Link href={href(shiftYear(year, 1))} className={linkClass}>
         翌年 →
       </Link>
     </div>
   );
 }
 
-async function YearlyView({ year }: { year: string }) {
-  const { months, categories } = await getYearlyOverview(year);
+/** 月別の推移。カテゴリを選んでいれば、そのカテゴリだけの月別の金額（F-13） */
+async function MonthlyTrend({
+  year,
+  months,
+  category,
+}: {
+  year: string;
+  months: MonthlyTotal[];
+  category: Category | null;
+}) {
+  if (!category) {
+    return (
+      <TrendChart
+        points={months.map((m) => ({
+          label: String(m.month),
+          title: `${year}年${m.month}月`,
+          income: m.income,
+          expense: m.expense,
+        }))}
+        ariaLabel="月別の収入・支出・差額のグラフ。支出の内訳は下の表を参照"
+        testId="yearly-chart"
+      />
+    );
+  }
+
+  const amounts = await getCategoryMonthly(year, category.id);
+  const total = amounts.reduce((sum, a) => sum + a, 0);
+  const kind = category.type === "income" ? "収入" : "支出";
+  if (total === 0) {
+    return <p className={emptyClass}>{year}年は「{category.name}」の{kind}がありません</p>;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <p data-testid="category-total" className="text-sm">
+        {year}年の合計 <span className="font-semibold tabular-nums">{formatYen(total)}</span>
+      </p>
+      <TrendChart
+        points={amounts.map((amount, i) => ({
+          label: String(i + 1),
+          title: `${year}年${i + 1}月 ${category.name}`,
+          income: category.type === "income" ? amount : 0,
+          expense: category.type === "expense" ? amount : 0,
+        }))}
+        only={category.type}
+        ariaLabel={`「${category.name}」の月別の${kind}のグラフ`}
+        testId="yearly-chart"
+      />
+    </div>
+  );
+}
+
+async function YearlyView({ year, categoryParam }: { year: string; categoryParam: unknown }) {
+  const [{ months, categories }, allCategories] = await Promise.all([
+    getYearlyOverview(year),
+    listCategories(),
+  ]);
+  // 存在しないカテゴリなど不正な値は「すべて」として扱う
+  const category =
+    typeof categoryParam === "string"
+      ? (allCategories.find((c) => String(c.id) === categoryParam) ?? null)
+      : null;
   const hasData = months.some((m) => m.income > 0 || m.expense > 0);
   return (
     <>
-      <YearNav year={year} />
+      <YearNav year={year} category={category} />
       {hasData ? (
         <>
-          <section>
-            <h2 className="mb-2 font-semibold">月別の収支</h2>
-            <TrendChart
-              points={months.map((m) => ({
-                label: String(m.month),
-                title: `${year}年${m.month}月`,
-                income: m.income,
-                expense: m.expense,
-              }))}
-              ariaLabel="月別の収入・支出・差額のグラフ。支出の内訳は下の表を参照"
-              testId="yearly-chart"
+          <section className="flex flex-col gap-2">
+            <h2 className="font-semibold">
+              {category
+                ? `「${category.name}」の月別の${category.type === "income" ? "収入" : "支出"}`
+                : "月別の収支"}
+            </h2>
+            <TrendCategorySelect
+              year={year}
+              categoryId={category?.id ?? null}
+              categories={allCategories}
             />
+            <MonthlyTrend year={year} months={months} category={category} />
           </section>
           <section>
             <h2 className="mb-2 font-semibold">カテゴリ別・月別の支出</h2>
@@ -122,7 +187,7 @@ async function Trends({ searchParams }: { searchParams: PageProps<"/trends">["se
   return (
     <div className="flex flex-col gap-5">
       <ViewTabs view={view} year={year} />
-      {view === "weekly" ? <WeeklyView /> : <YearlyView year={year} />}
+      {view === "weekly" ? <WeeklyView /> : <YearlyView year={year} categoryParam={params.category} />}
     </div>
   );
 }
