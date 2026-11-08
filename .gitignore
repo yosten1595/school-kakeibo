@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MySQL のバックアップ（README の移行手順で作るもの）
+/backup*.sql
