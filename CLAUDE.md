@@ -42,7 +42,7 @@
 - フックが拒否した場合は回避せず、ルールに沿ってやり直す（Issue を作る等）。
 
 ## 7. 技術構成
-- Next.js (App Router) + React + TypeScript + Tailwind CSS / MySQL 8.4（Docker）+ mysql2（SQL を直接書く）。認証は使わない（1人専用）。ローカルのみで動かし、公開 URL は作らない。要件は `docs/requirements.md`。
+- Next.js (App Router) + React + TypeScript + Tailwind CSS / MySQL 9.7（Docker）+ mysql2（SQL を直接書く）。認証は使わない（1人専用）。開発はローカル。本番は AWS（EC2 + RDS、無料枠）に Terraform（`infra/`）で置き、開発者のPCのグローバル IP だけ許可する（だれでも開ける URL は作らない）。手順は `docs/deploy.md`。要件は `docs/requirements.md`。
 - **Next.js のコードを書く前に、`node_modules/next/dist/docs/` の該当ガイドを読む**（このバージョンは `cacheComponents` が有効で、従来の知識と異なる。例: `export const dynamic` は使えず、リクエスト時の処理は `await connection()` + `<Suspense>`）。詳細は `AGENTS.md`。
 - ソースは `src/`、DB 関連は `src/lib/db/`（mysql2 はサーバー側のコードからだけ使う）。パスエイリアスは `@/*` = `src/*`。
 - DB の起動: `docker compose up -d`（MySQL はポート 3306、接続情報は `docker-compose.yml` と `.env.example`）。
