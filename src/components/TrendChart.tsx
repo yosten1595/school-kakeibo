@@ -12,25 +12,33 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts";
 import { formatSignedYen, formatYen } from "@/lib/month";
-import type { MonthlyTotal } from "@/lib/types";
 
 const INCOME_COLOR = "var(--series-1)";
 const EXPENSE_COLOR = "var(--series-8)";
 const BALANCE_COLOR = "var(--foreground)";
 
+/** グラフの 1 区間（1 か月や 1 週）。label は横軸、title はツールチップの見出し */
+export interface TrendPoint {
+  label: string;
+  title: string;
+  income: number;
+  expense: number;
+}
+
 interface Point {
-  month: number;
+  label: string;
+  title: string;
   income: number | null;
   expense: number | null;
   balance: number | null;
 }
 
-/** 記録がない月は null にして、棒も折れ線も描かない（0 円と区別する） */
-function toPoints(months: MonthlyTotal[]): Point[] {
-  return months.map((m) =>
-    m.income === 0 && m.expense === 0
-      ? { month: m.month, income: null, expense: null, balance: null }
-      : m,
+/** 記録がない区間は null にして、棒も折れ線も描かない（0 円と区別する） */
+function toPoints(points: TrendPoint[]): Point[] {
+  return points.map((p) =>
+    p.income === 0 && p.expense === 0
+      ? { ...p, income: null, expense: null, balance: null }
+      : { ...p, balance: p.income - p.expense },
   );
 }
 
@@ -43,6 +51,7 @@ function axisTicks(points: Point[]): number[] {
   const values = points.flatMap((p) => [p.income ?? 0, p.expense ?? 0, p.balance ?? 0]);
   const low = Math.min(0, ...values);
   const high = Math.max(0, ...values);
+  if (high === low) return [0, 10000];
   const roughStep = (high - low) / 4;
   const magnitude = 10 ** Math.floor(Math.log10(roughStep));
   const step = ([1, 2, 5, 10].find((s) => s * magnitude >= roughStep) ?? 10) * magnitude;
@@ -69,7 +78,7 @@ function ChartTooltip({ active, payload }: TooltipContentProps) {
   if (!active || !point || point.balance === null) return null;
   return (
     <div className="rounded border border-zinc-200 bg-background px-3 py-2 text-sm shadow-sm dark:border-zinc-700">
-      <div className="font-medium">{point.month}月</div>
+      <div className="font-medium">{point.title}</div>
       <div className="tabular-nums">収入 {formatYen(point.income ?? 0)}</div>
       <div className="tabular-nums">支出 {formatYen(point.expense ?? 0)}</div>
       <div className="tabular-nums">差額 {formatSignedYen(point.balance)}</div>
@@ -77,10 +86,18 @@ function ChartTooltip({ active, payload }: TooltipContentProps) {
   );
 }
 
-/** 選択した年の、月別の収入・支出（棒）と差額（折れ線） */
-export function YearlyTrendChart({ months }: { months: MonthlyTotal[] }) {
-  const points = toPoints(months);
-  const ticks = axisTicks(points);
+/** 区間ごと（1 か月など）の収入・支出（棒）と差額（折れ線） */
+export function TrendChart({
+  points,
+  ariaLabel,
+  testId,
+}: {
+  points: TrendPoint[];
+  ariaLabel: string;
+  testId: string;
+}) {
+  const data = toPoints(points);
+  const ticks = axisTicks(data);
   return (
     <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -88,19 +105,19 @@ export function YearlyTrendChart({ months }: { months: MonthlyTotal[] }) {
         <LegendItem color={EXPENSE_COLOR} label="支出" />
         <LegendItem color={BALANCE_COLOR} label="差額" line />
       </div>
-      <div data-testid="yearly-chart">
+      <div data-testid={testId}>
         <ComposedChart
           responsive
-          data={points}
+          data={data}
           style={{ width: "100%", height: 260 }}
           margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
           barGap={2}
           role="img"
-          aria-label="月別の収入・支出・差額のグラフ。支出の内訳は下の表を参照"
+          aria-label={ariaLabel}
         >
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis
-            dataKey="month"
+            dataKey="label"
             interval={0}
             tick={{ fontSize: 12, fill: "var(--chart-muted)" }}
             tickLine={false}
