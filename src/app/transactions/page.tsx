@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { TransactionsView } from "@/components/TransactionsView";
 import { listCategories } from "@/lib/db/categories";
-import { listTransactionsByMonth } from "@/lib/db/transactions";
+import { getLastCategoryIds, listTransactionsByMonth } from "@/lib/db/transactions";
 import { parseMonth, today } from "@/lib/month";
 import { parseTransactionFilter } from "@/lib/transaction-filter";
 
@@ -15,9 +15,10 @@ async function TransactionsData({
   const params = await searchParams;
   const month = parseMonth(params.month);
   const filter = parseTransactionFilter(params);
-  const [transactions, categories] = await Promise.all([
+  const [transactions, categories, lastCategoryIds] = await Promise.all([
     listTransactionsByMonth(month, filter),
     listCategories(),
+    getLastCategoryIds(),
   ]);
 
   return (
@@ -27,6 +28,7 @@ async function TransactionsData({
       transactions={transactions}
       categories={categories}
       filter={filter}
+      lastCategoryIds={lastCategoryIds}
     />
   );
 }

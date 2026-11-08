@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Category, TransactionFormState } from "@/lib/types";
+import type { Category, LastCategoryIds, TransactionFormState } from "@/lib/types";
 
 type Props = {
   action: (formData: FormData) => Promise<TransactionFormState>;
@@ -10,6 +10,8 @@ type Props = {
   submitLabel: string;
   onSaved: (month: string) => void;
   onCancel: () => void;
+  /** 種別を切り替えたときに入れるカテゴリ（登録フォームでは前回のカテゴリ）。なければ未選択にする */
+  defaultCategoryIds?: LastCategoryIds;
 };
 
 const inputClass =
@@ -30,6 +32,7 @@ export function TransactionForm({
   submitLabel,
   onSaved,
   onCancel,
+  defaultCategoryIds,
 }: Props) {
   const [errors, setErrors] = useState<NonNullable<TransactionFormState["errors"]>>({});
   const [pending, startTransition] = useTransition();
@@ -40,9 +43,11 @@ export function TransactionForm({
 
   function changeType(next: "income" | "expense") {
     setType(next);
-    // 種別を変えたら、合わなくなったカテゴリの選択を外す
+    // 種別を変えて今のカテゴリが合わなくなったら、その種別の前回のカテゴリにする（なければ未選択）
     if (!categories.some((c) => String(c.id) === categoryId && c.type === next)) {
-      setCategoryId("");
+      const fallback = defaultCategoryIds?.[next];
+      const exists = categories.some((c) => c.id === fallback && c.type === next);
+      setCategoryId(exists ? String(fallback) : "");
     }
   }
 

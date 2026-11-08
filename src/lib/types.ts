@@ -103,6 +103,9 @@ export interface TransactionFilter {
   categoryId: number | null;
 }
 
+/** 種別ごとの、最後に登録した収支のカテゴリ ID（記録がなければ null） */
+export type LastCategoryIds = Record<TransactionType, number | null>;
+
 export interface TransactionInput {
   date: string;
   type: TransactionType;

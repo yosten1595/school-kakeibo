@@ -14,7 +14,7 @@ import {
 } from "@/app/transactions/actions";
 import { formatYen } from "@/lib/month";
 import { filterQuery, isFiltered, transactionsHref } from "@/lib/transaction-filter";
-import type { Category, Transaction, TransactionFilter } from "@/lib/types";
+import type { Category, LastCategoryIds, Transaction, TransactionFilter } from "@/lib/types";
 
 /** 絞り込み結果の件数と合計（例: 3件 ・ 支出 ¥2,345） */
 function FilterResult({ transactions }: { transactions: Transaction[] }) {
@@ -39,12 +39,14 @@ export function TransactionsView({
   transactions,
   categories,
   filter,
+  lastCategoryIds,
 }: {
   month: string;
   today: string;
   transactions: Transaction[];
   categories: Category[];
   filter: TransactionFilter;
+  lastCategoryIds: LastCategoryIds;
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -125,7 +127,15 @@ export function TransactionsView({
           <TransactionForm
             action={createTransactionAction}
             categories={categories}
-            initial={{ date: today, type: "expense", amount: "", categoryId: "", memo: "" }}
+            // カテゴリの初期値は、前回登録したカテゴリ。同じカテゴリが続けば「＋登録 → 金額 → 登録する」で済む
+            initial={{
+              date: today,
+              type: "expense",
+              amount: "",
+              categoryId: lastCategoryIds.expense === null ? "" : String(lastCategoryIds.expense),
+              memo: "",
+            }}
+            defaultCategoryIds={lastCategoryIds}
             submitLabel="登録する"
             onSaved={handleSaved}
             onCancel={() => setDialog(null)}
