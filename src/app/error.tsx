@@ -1,23 +1,20 @@
 "use client";
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+import { LoadErrorView } from "@/components/LoadErrorView";
+
+/**
+ * 各画面で受け止めきれなかったエラーの表示（DB の読み込み失敗は、各画面の LoadErrorView で原因つきで表示する）。
+ * 本番環境ではサーバーのエラーの中身は渡されないため、サーバーのログと照らし合わせる番号（digest）を出す。
+ */
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="flex flex-col items-start gap-3">
-      <h1 className="text-2xl font-bold">データを読み込めませんでした</h1>
-      <p className="text-zinc-700 dark:text-zinc-300">
-        データベース（MySQL）に接続できない可能性があります。Docker Desktop を起動し、
-        <code className="mx-1 rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
-          docker compose up -d
-        </code>
-        を実行してから、もう一度お試しください。
-      </p>
-      <button
-        type="button"
-        onClick={reset}
-        className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
-      >
-        もう一度試す
-      </button>
-    </div>
+    <LoadErrorView
+      error={{
+        kind: "unknown",
+        code: error.digest ? `digest ${error.digest}` : null,
+        detail: error.message || "内容を取得できませんでした",
+      }}
+      reset={reset}
+    />
   );
 }

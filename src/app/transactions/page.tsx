@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { TransactionsView } from "@/components/TransactionsView";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { listCategories } from "@/lib/db/categories";
+import { load } from "@/lib/db/load";
 import { listTransactionsByMonth } from "@/lib/db/transactions";
 import { parseMonth, today } from "@/lib/month";
 import { parseTransactionFilter } from "@/lib/transaction-filter";
@@ -15,10 +17,9 @@ async function TransactionsData({
   const params = await searchParams;
   const month = parseMonth(params.month);
   const filter = parseTransactionFilter(params);
-  const [transactions, categories] = await Promise.all([
-    listTransactionsByMonth(month, filter),
-    listCategories(),
-  ]);
+  const result = await load(() => Promise.all([listTransactionsByMonth(month, filter), listCategories()]));
+  if (!result.ok) return <LoadErrorView error={result.error} />;
+  const [transactions, categories] = result.data;
 
   return (
     <TransactionsView

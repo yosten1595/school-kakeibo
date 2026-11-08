@@ -3,7 +3,9 @@ import { connection } from "next/server";
 import { BudgetForm } from "@/components/BudgetForm";
 import { MonthNav } from "@/components/MonthNav";
 import { budgetFieldName } from "@/lib/budget";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { listBudgets } from "@/lib/db/budgets";
+import { load } from "@/lib/db/load";
 import { getExpenseByCategory } from "@/lib/db/transactions";
 import { parseMonth, shiftMonth } from "@/lib/month";
 import type { Budget } from "@/lib/types";
@@ -18,11 +20,11 @@ async function Budgets({ searchParams }: { searchParams: PageProps<"/budgets">["
   const month = parseMonth((await searchParams).month);
   const previousMonth = shiftMonth(month, -1);
   // getExpenseByCategory は全支出カテゴリを登録順で返す（支出がなければ 0）
-  const [budgets, previousBudgets, expenses] = await Promise.all([
-    listBudgets(month),
-    listBudgets(previousMonth),
-    getExpenseByCategory(month),
-  ]);
+  const result = await load(() =>
+    Promise.all([listBudgets(month), listBudgets(previousMonth), getExpenseByCategory(month)]),
+  );
+  if (!result.ok) return <LoadErrorView error={result.error} />;
+  const [budgets, previousBudgets, expenses] = result.data;
 
   return (
     <div className="flex flex-col gap-5">
