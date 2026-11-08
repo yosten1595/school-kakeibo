@@ -54,6 +54,7 @@
 | `npm run dev` | 開発サーバーを起動 |
 | `npm run build` | 本番ビルド |
 | `npm run lint` | ESLint を実行 |
+| `npm test` | 自動テスト（Vitest）を実行 |
 | `docker compose up -d` | MySQL を起動 |
 | `docker compose down` | MySQL を停止（データは残る） |
 | `docker compose down -v` | MySQL を停止し、データも削除 |

@@ -36,6 +36,14 @@ export function filterQuery(filter: TransactionFilter): Record<string, string> {
   return query;
 }
 
+/**
+ * キーワードを「メモに含む」の LIKE パターンにする（`%キーワード%`）。
+ * LIKE の特殊文字（\ % _）はエスケープし、ただの文字として検索する。
+ */
+export function toLikePattern(keyword: string): string {
+  return `%${keyword.replace(/[\\%_]/g, "\\$&")}%`;
+}
+
 export function transactionsHref(month: string, filter: TransactionFilter = NO_FILTER): string {
   return `/transactions?${new URLSearchParams({ month, ...filterQuery(filter) })}`;
 }
