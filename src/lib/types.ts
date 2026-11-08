@@ -37,6 +37,11 @@ export interface MonthlyTotal extends MonthlySummary {
   month: number; // 1〜12
 }
 
+/** 1 週間分の収支。weekStart はその週の月曜日（YYYY-MM-DD） */
+export interface WeeklyTotal extends MonthlySummary {
+  weekStart: string;
+}
+
 /** 1年間の、あるカテゴリの支出 */
 export interface CategoryYearlyExpense {
   categoryId: number;

@@ -2,6 +2,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
 import { monthRange, yearRange } from "@/lib/month";
 import { NO_FILTER } from "@/lib/transaction-filter";
+import { addDays, recentWeekStarts } from "@/lib/week";
 import type {
   CategoryExpense,
   CategoryYearlyExpense,
@@ -10,6 +11,7 @@ import type {
   Transaction,
   TransactionFilter,
   TransactionInput,
+  WeeklyTotal,
   YearlyOverview,
 } from "@/lib/types";
 
@@ -129,6 +131,33 @@ interface CategoryMonthRow extends RowDataPacket {
   categoryName: string;
   month: number;
   total: string; // SUM は文字列で返る
+}
+
+interface WeeklyTotalRow extends RowDataPacket {
+  weekStart: string;
+  type: "income" | "expense";
+  total: string; // SUM は文字列で返る
+}
+
+/** today を含む週までの直近 count 週（月曜始まり）の、週ごとの収支（古い順。記録のない週は 0） */
+export async function getWeeklyTotals(today: string, count: number): Promise<WeeklyTotal[]> {
+  const starts = recentWeekStarts(today, count);
+  const [rows] = await pool.query<WeeklyTotalRow[]>(
+    // WEEKDAY は月曜=0。日付から曜日の分を引くと、その週の月曜日になる（年や月をまたぐ週も 1 週として集計できる）
+    `SELECT DATE_FORMAT(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY), '%Y-%m-%d') AS weekStart,
+            type, SUM(amount) AS total
+     FROM transactions
+     WHERE date >= ? AND date < ?
+     GROUP BY weekStart, type`,
+    [starts[0], addDays(starts[starts.length - 1], 7)],
+  );
+  return starts.map((weekStart) => {
+    const total = (type: "income" | "expense") =>
+      Number(rows.find((r) => r.weekStart === weekStart && r.type === type)?.total ?? 0);
+    const income = total("income");
+    const expense = total("expense");
+    return { weekStart, income, expense, balance: income - expense };
+  });
 }
 
 /** 指定した年（"YYYY"）の月別の収支と、カテゴリ別・月別の支出 */
