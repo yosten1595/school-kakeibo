@@ -17,6 +17,10 @@
   --chart-muted: #52514e;
   --chart-grid: #e1e0d9;
 
+  /* 予算の状態の色（明暗どちらのモードでも同じ）。必ずラベルと一緒に使う */
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+
   /* 金額の濃淡（青の 1 色）。文字は背景に合わせて読める色にする */
   --heat-1: #cde2fb;
   --heat-2: #9ec5f4;

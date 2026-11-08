@@ -39,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/trends" className="text-zinc-700 hover:underline dark:text-zinc-300">
               推移
             </Link>
+            <Link href="/budgets" className="text-zinc-700 hover:underline dark:text-zinc-300">
+              予算
+            </Link>
             <Link href="/categories" className="text-zinc-700 hover:underline dark:text-zinc-300">
               カテゴリ
             </Link>

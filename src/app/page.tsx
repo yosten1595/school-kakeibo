@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { BudgetStatusList } from "@/components/BudgetStatusList";
 import { ExpenseBreakdown } from "@/components/ExpenseBreakdown";
 import { MonthNav } from "@/components/MonthNav";
+import { listBudgets } from "@/lib/db/budgets";
 import {
   getExpenseByCategory,
   getMonthlySummary,
@@ -40,10 +42,11 @@ async function Dashboard({
 }) {
   await connection(); // 月の指定がないときは「今日」から今月を決めるため、毎回のリクエストで処理する
   const month = parseMonth((await searchParams).month);
-  const [summary, transactions, expenseByCategory] = await Promise.all([
+  const [summary, transactions, expenseByCategory, budgets] = await Promise.all([
     getMonthlySummary(month),
     listTransactionsByMonth(month),
     getExpenseByCategory(month),
+    listBudgets(month),
   ]);
   const recent = transactions.slice(0, RECENT_COUNT);
 
@@ -78,6 +81,26 @@ async function Dashboard({
             testId="summary-balance"
           />
         </div>
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-semibold">予算</h2>
+          {budgets.length > 0 && (
+            <Link
+              href={`/budgets?month=${month}`}
+              className="text-sm text-blue-700 hover:underline dark:text-blue-400"
+            >
+              予算を変更する →
+            </Link>
+          )}
+        </div>
+        <BudgetStatusList
+          month={month}
+          budgets={budgets}
+          expenses={expenseByCategory}
+          totalExpense={summary.expense}
+        />
       </section>
 
       <section>

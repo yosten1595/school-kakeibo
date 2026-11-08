@@ -57,6 +57,25 @@ export interface CategoryExpense {
   total: number;
 }
 
+/** 1か月の予算。categoryId が null なら月全体の予算 */
+export interface Budget {
+  categoryId: number | null;
+  categoryName: string | null;
+  amount: number;
+}
+
+/** 予算の保存内容。amount が null なら、その予算を削除する */
+export interface BudgetInput {
+  categoryId: number | null;
+  amount: number | null;
+}
+
+export interface BudgetFormState {
+  /** キーは入力欄の name（"total" / "category-<id>"）または "form" */
+  errors?: Record<string, string>;
+  saved?: boolean;
+}
+
 /** 収支一覧の絞り込み条件。null・空文字は「指定なし」 */
 export interface TransactionFilter {
   keyword: string; // メモに含まれる文字
