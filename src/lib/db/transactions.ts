@@ -6,6 +6,7 @@ import { addDays, recentWeekStarts } from "@/lib/week";
 import type {
   CategoryExpense,
   CategoryYearlyExpense,
+  LastCategoryIds,
   MonthlySummary,
   MonthlyTotal,
   Transaction,
@@ -74,6 +75,28 @@ export async function listTransactionsByMonth(
     params,
   );
   return rows.map(toTransaction);
+}
+
+interface LastCategoryRow extends RowDataPacket {
+  type: "income" | "expense";
+  categoryId: number;
+}
+
+/**
+ * 種別ごとに、最後に登録した収支のカテゴリ（登録フォームの初期値に使う）。記録がない種別は null。
+ * 使用中のカテゴリは削除できないので、返すカテゴリは必ず存在する。
+ */
+export async function getLastCategoryIds(): Promise<LastCategoryIds> {
+  const [rows] = await pool.query<LastCategoryRow[]>(
+    `SELECT t.type, t.category_id AS categoryId
+     FROM transactions t
+     JOIN (SELECT type, MAX(id) AS id FROM transactions GROUP BY type) latest ON latest.id = t.id`,
+  );
+  const find = (type: "income" | "expense") => {
+    const row = rows.find((r) => r.type === type);
+    return row ? Number(row.categoryId) : null;
+  };
+  return { income: find("income"), expense: find("expense") };
 }
 
 interface SummaryRow extends RowDataPacket {

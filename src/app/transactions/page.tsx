@@ -4,7 +4,7 @@ import { TransactionsView } from "@/components/TransactionsView";
 import { LoadErrorView } from "@/components/LoadErrorView";
 import { listCategories } from "@/lib/db/categories";
 import { load } from "@/lib/db/load";
-import { listTransactionsByMonth } from "@/lib/db/transactions";
+import { getLastCategoryIds, listTransactionsByMonth } from "@/lib/db/transactions";
 import { parseMonth, today } from "@/lib/month";
 import { parseTransactionFilter } from "@/lib/transaction-filter";
 
@@ -17,9 +17,11 @@ async function TransactionsData({
   const params = await searchParams;
   const month = parseMonth(params.month);
   const filter = parseTransactionFilter(params);
-  const result = await load(() => Promise.all([listTransactionsByMonth(month, filter), listCategories()]));
+  const result = await load(() =>
+    Promise.all([listTransactionsByMonth(month, filter), listCategories(), getLastCategoryIds()]),
+  );
   if (!result.ok) return <LoadErrorView error={result.error} />;
-  const [transactions, categories] = result.data;
+  const [transactions, categories, lastCategoryIds] = result.data;
 
   return (
     <TransactionsView
@@ -28,6 +30,7 @@ async function TransactionsData({
       transactions={transactions}
       categories={categories}
       filter={filter}
+      lastCategoryIds={lastCategoryIds}
     />
   );
 }
