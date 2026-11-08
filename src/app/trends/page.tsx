@@ -7,7 +7,7 @@ import { WeeklyTable } from "@/components/WeeklyTable";
 import { YearlyCategoryTable } from "@/components/YearlyCategoryTable";
 import { listCategories } from "@/lib/db/categories";
 import { getCategoryMonthly, getWeeklyBreakdown, getYearlyOverview } from "@/lib/db/transactions";
-import { formatYen, parseYear, shiftYear, today } from "@/lib/month";
+import { formatYen, isYear, parseYear, shiftYear, today } from "@/lib/month";
 import type { Category, MonthlyTotal } from "@/lib/types";
 import { addDays, formatMonthDay, formatWeekRange, weekStart } from "@/lib/week";
 
@@ -44,20 +44,33 @@ function ViewTabs({ view, year }: { view: View; year: string }) {
   );
 }
 
-/** 前年・翌年への移動。選んでいるカテゴリは引き継ぐ */
+/** 前年・翌年への移動。選んでいるカテゴリは引き継ぐ。表示できる範囲の端では、その先へのリンクを出さない */
 function YearNav({ year, category }: { year: string; category: Category | null }) {
-  const linkClass = "rounded px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800";
-  const href = (y: string) =>
-    `/trends?${new URLSearchParams({ year: y, ...(category ? { category: String(category.id) } : {}) })}`;
+  const link = (delta: number, label: string) => {
+    const target = shiftYear(year, delta);
+    if (!isYear(target)) {
+      return (
+        <span
+          aria-disabled="true"
+          title="これより先は表示できません"
+          className="rounded px-3 py-1 text-zinc-400 dark:text-zinc-600"
+        >
+          {label}
+        </span>
+      );
+    }
+    const params = new URLSearchParams({ year: target, ...(category ? { category: String(category.id) } : {}) });
+    return (
+      <Link href={`/trends?${params}`} className="rounded px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        {label}
+      </Link>
+    );
+  };
   return (
     <div className="flex items-center justify-between">
-      <Link href={href(shiftYear(year, -1))} className={linkClass}>
-        ← 前年
-      </Link>
+      {link(-1, "← 前年")}
       <h2 className="text-lg font-semibold">{year}年</h2>
-      <Link href={href(shiftYear(year, 1))} className={linkClass}>
-        翌年 →
-      </Link>
+      {link(1, "翌年 →")}
     </div>
   );
 }
