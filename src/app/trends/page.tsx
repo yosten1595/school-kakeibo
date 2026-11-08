@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { TrendChart } from "@/components/TrendChart";
 import { WeeklyTable } from "@/components/WeeklyTable";
 import { YearlyCategoryTable } from "@/components/YearlyCategoryTable";
-import { getWeeklyTotals, getYearlyOverview } from "@/lib/db/transactions";
+import { getWeeklyBreakdown, getYearlyOverview } from "@/lib/db/transactions";
 import { parseYear, shiftYear, today } from "@/lib/month";
 import { addDays, formatMonthDay, formatWeekRange, weekStart } from "@/lib/week";
 
@@ -91,7 +91,8 @@ async function YearlyView({ year }: { year: string }) {
 
 async function WeeklyView() {
   const date = today();
-  const weeks = await getWeeklyTotals(date, WEEK_COUNT);
+  const breakdown = await getWeeklyBreakdown(date, WEEK_COUNT);
+  const { weeks } = breakdown;
   const hasData = weeks.some((w) => w.income > 0 || w.expense > 0);
   const first = weeks[0].weekStart;
   const last = weeks[weeks.length - 1].weekStart;
@@ -102,26 +103,10 @@ async function WeeklyView() {
         {formatMonthDay(addDays(last, 6))}（週は月曜始まり。今週は {formatWeekRange(last)}）
       </p>
       {hasData ? (
-        <>
-          <section>
-            <h2 className="mb-2 font-semibold">週別の収支</h2>
-            <TrendChart
-              points={weeks.map((w) => ({
-                label: formatMonthDay(w.weekStart),
-                title: `${formatWeekRange(w.weekStart)} の週`,
-                income: w.income,
-                expense: w.expense,
-              }))}
-              ariaLabel={`直近${WEEK_COUNT}週の収入・支出・差額のグラフ。金額は下の表を参照`}
-              testId="weekly-chart"
-              showAllTicks={false}
-            />
-          </section>
-          <section>
-            <h2 className="mb-2 font-semibold">週ごとの金額</h2>
-            <WeeklyTable weeks={weeks} currentWeek={weekStart(date)} />
-          </section>
-        </>
+        <section>
+          <h2 className="mb-2 font-semibold">週ごとの収入・支出</h2>
+          <WeeklyTable breakdown={breakdown} currentWeek={weekStart(date)} />
+        </section>
       ) : (
         <p className={emptyClass}>直近{WEEK_COUNT}週の収支はまだありません</p>
       )}

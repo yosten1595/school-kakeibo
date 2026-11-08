@@ -42,6 +42,21 @@ export interface WeeklyTotal extends MonthlySummary {
   weekStart: string;
 }
 
+/** 直近の各週の、あるカテゴリの金額 */
+export interface CategoryWeekly {
+  categoryId: number;
+  categoryName: string;
+  weeks: number[]; // WeeklyBreakdown.weeks と同じ並び（古い順）
+  total: number;
+}
+
+/** 週別の収支と、カテゴリ別の内訳 */
+export interface WeeklyBreakdown {
+  weeks: WeeklyTotal[]; // 古い順
+  income: CategoryWeekly[]; // 期間中に記録があるカテゴリのみ。合計が大きい順
+  expense: CategoryWeekly[];
+}
+
 /** 1年間の、あるカテゴリの支出 */
 export interface CategoryYearlyExpense {
   categoryId: number;

@@ -1,14 +1,5 @@
+import { HEAT_LEVELS, heatLevel } from "@/lib/heat";
 import type { CategoryYearlyExpense, MonthlyTotal } from "@/lib/types";
-
-const HEAT_LEVELS = 5; // globals.css の .heat-1〜5
-
-/**
- * 色の段階（1〜5）。全マス共通の基準にして、カテゴリをまたいで濃さを比べられるようにする。
- * 平方根をとるのは、家賃のような大きな固定費があっても、小さな金額の差が色に出るようにするため。
- */
-function heatLevel(amount: number, max: number): number {
-  return Math.max(1, Math.ceil(Math.sqrt(amount / max) * HEAT_LEVELS));
-}
 
 function formatAmount(amount: number): string {
   return amount.toLocaleString("ja-JP");
@@ -35,7 +26,9 @@ export function YearlyCategoryTable({
   const max = Math.max(...categories.flatMap((c) => c.months));
   const yearTotal = categories.reduce((sum, c) => sum + c.total, 0);
   // 枠に左の余白を持たせると、スクロールした月がその余白にのぞくので、余白はこの列に持たせる
-  const stickyColumn = "sticky left-0 z-10 max-w-24 truncate bg-background py-1.5 pl-3 pr-2 text-left";
+  // 右の影はセルの間のすき間（border-spacing）をふさぎ、スクロールしたマスがのぞかないようにする
+  const stickyColumn =
+    "sticky left-0 z-10 max-w-24 truncate bg-background py-1.5 pl-3 pr-2 text-left shadow-[2px_0_0_var(--background)]";
   const monthColumn = "px-1 py-1.5 text-right tabular-nums";
   const totalColumn = "py-1.5 pl-2 pr-3 text-right tabular-nums";
 

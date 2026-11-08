@@ -86,20 +86,15 @@ function ChartTooltip({ active, payload }: TooltipContentProps) {
   );
 }
 
-/**
- * 区間ごとの収入・支出（棒）と差額（折れ線）。月別・週別で共通。
- * showAllTicks: 横軸のラベルを全部出す（月別の 1〜12 など、短いラベルのとき）
- */
+/** 区間ごと（1 か月など）の収入・支出（棒）と差額（折れ線） */
 export function TrendChart({
   points,
   ariaLabel,
   testId,
-  showAllTicks = true,
 }: {
   points: TrendPoint[];
   ariaLabel: string;
   testId: string;
-  showAllTicks?: boolean;
 }) {
   const data = toPoints(points);
   const ticks = axisTicks(data);
@@ -123,8 +118,7 @@ export function TrendChart({
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis
             dataKey="label"
-            interval={showAllTicks ? 0 : "preserveStartEnd"}
-            minTickGap={8}
+            interval={0}
             tick={{ fontSize: 12, fill: "var(--chart-muted)" }}
             tickLine={false}
             axisLine={{ stroke: "var(--chart-grid)" }}
