@@ -46,7 +46,7 @@
 - **Next.js のコードを書く前に、`node_modules/next/dist/docs/` の該当ガイドを読む**（このバージョンは `cacheComponents` が有効で、従来の知識と異なる。例: `export const dynamic` は使えず、リクエスト時の処理は `await connection()` + `<Suspense>`）。詳細は `AGENTS.md`。
 - ソースは `src/`、DB 関連は `src/lib/db/`（mysql2 はサーバー側のコードからだけ使う）。パスエイリアスは `@/*` = `src/*`。
 - DB の起動: `docker compose up -d`（MySQL はポート 3306、接続情報は `docker-compose.yml` と `.env.example`）。
-- 開発サーバー: `npm run dev`（http://localhost:3000）。変更後は `npm run lint` と `npm run build` を通す。
+- 開発サーバー: `npm run dev`（http://localhost:3000）。変更後は `npm run lint`、`npm test`、`npm run build` を通す（`npm test` は計算・検証の処理の自動テスト）。
 - 接続情報を変える場合は `.env.local`（Git に含めない）に書く。環境変数を増やしたら `.env.example` も更新する。
 - SQL は必ずプレースホルダ（`?`）で実行する。文字列連結で SQL を組み立てない。
 - DB のテーブルを作るときは `docs/requirements.md` の「6. データ設計」に合わせる。変更したら要件定義書も更新する。
