@@ -1,7 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
 import { monthRange, yearRange } from "@/lib/month";
-import { NO_FILTER } from "@/lib/transaction-filter";
+import { NO_FILTER, toLikePattern } from "@/lib/transaction-filter";
 import { addDays, recentWeekStarts } from "@/lib/week";
 import type {
   CategoryExpense,
@@ -44,11 +44,6 @@ const toTransaction = (r: TransactionRow): Transaction => ({
   memo: r.memo,
 });
 
-/** LIKE の特殊文字（\ % _）を、ただの文字として検索できるようにエスケープする */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, "\\$&");
-}
-
 /** 指定した月（"YYYY-MM"）の収支を、新しい順に返す。filter で絞り込める */
 export async function listTransactionsByMonth(
   month: string,
@@ -60,7 +55,7 @@ export async function listTransactionsByMonth(
   const params: (string | number)[] = [start, end];
   if (filter.keyword) {
     conditions.push("t.memo LIKE ?");
-    params.push(`%${escapeLike(filter.keyword)}%`);
+    params.push(toLikePattern(filter.keyword));
   }
   if (filter.type) {
     conditions.push("t.type = ?");
