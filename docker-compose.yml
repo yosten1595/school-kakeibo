@@ -1,6 +1,7 @@
 services:
   db:
-    image: mysql:8.4
+    # LTS（長期サポート版）の最新。9.7 系の修正版は自動で取り込む
+    image: mysql:9.7
     container_name: kakeibo-db
     environment:
       MYSQL_ROOT_PASSWORD: root

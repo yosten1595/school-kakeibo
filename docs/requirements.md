@@ -19,7 +19,7 @@
 |---|---|---|
 | フロントエンド | Next.js (App Router) + TypeScript | |
 | スタイル | Tailwind CSS | 採用済み |
-| データベース | MySQL 8.4 | Docker で起動する（`docker-compose.yml`） |
+| データベース | MySQL 9.7（LTS） | Docker で起動する（`docker-compose.yml`）。LTS（長期サポート版）の最新を使う |
 | DB アクセス | mysql2（SQL を直接書く） | Next.js のサーバー側（Server Components / Server Actions）から利用 |
 | 実行環境 | ローカルのみ | 公開 URL は作らない |
 | グラフ | Recharts | |
