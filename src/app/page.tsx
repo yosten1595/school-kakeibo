@@ -4,7 +4,9 @@ import { connection } from "next/server";
 import { BudgetStatusList } from "@/components/BudgetStatusList";
 import { ExpenseBreakdown } from "@/components/ExpenseBreakdown";
 import { MonthNav } from "@/components/MonthNav";
+import { LoadErrorView } from "@/components/LoadErrorView";
 import { listBudgets } from "@/lib/db/budgets";
+import { load } from "@/lib/db/load";
 import {
   getExpenseByCategory,
   getMonthlySummary,
@@ -42,12 +44,16 @@ async function Dashboard({
 }) {
   await connection(); // 月の指定がないときは「今日」から今月を決めるため、毎回のリクエストで処理する
   const month = parseMonth((await searchParams).month);
-  const [summary, transactions, expenseByCategory, budgets] = await Promise.all([
-    getMonthlySummary(month),
-    listTransactionsByMonth(month),
-    getExpenseByCategory(month),
-    listBudgets(month),
-  ]);
+  const result = await load(() =>
+    Promise.all([
+      getMonthlySummary(month),
+      listTransactionsByMonth(month),
+      getExpenseByCategory(month),
+      listBudgets(month),
+    ]),
+  );
+  if (!result.ok) return <LoadErrorView error={result.error} />;
+  const [summary, transactions, expenseByCategory, budgets] = result.data;
   const recent = transactions.slice(0, RECENT_COUNT);
 
   // ダッシュボードで色を付ける金額は差額だけ（プラスは緑、マイナスは赤、0 は色なし）
