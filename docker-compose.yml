@@ -10,7 +10,8 @@ services:
       TZ: Asia/Tokyo
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      # このパソコン（127.0.0.1）からだけ接続できるようにする。認証のないアプリなので外に公開しない
+      - "127.0.0.1:3306:3306"
     volumes:
       - kakeibo-db-data:/var/lib/mysql
       # 空のデータボリュームで初回起動したときだけ、ファイル名順に実行される
