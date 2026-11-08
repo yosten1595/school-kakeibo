@@ -5,6 +5,7 @@ import { useState } from "react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Modal } from "@/components/Modal";
 import { MonthNav } from "@/components/MonthNav";
+import { TransactionFilterForm } from "@/components/TransactionFilterForm";
 import { TransactionForm } from "@/components/TransactionForm";
 import {
   createTransactionAction,
@@ -12,7 +13,23 @@ import {
   updateTransactionAction,
 } from "@/app/transactions/actions";
 import { formatYen } from "@/lib/month";
-import type { Category, Transaction } from "@/lib/types";
+import { filterQuery, isFiltered, transactionsHref } from "@/lib/transaction-filter";
+import type { Category, Transaction, TransactionFilter } from "@/lib/types";
+
+/** 絞り込み結果の件数と合計（例: 3件 ・ 支出 ¥2,345） */
+function FilterResult({ transactions }: { transactions: Transaction[] }) {
+  const sum = (type: Transaction["type"]) =>
+    transactions.filter((t) => t.type === type).reduce((total, t) => total + t.amount, 0);
+  const income = sum("income");
+  const expense = sum("expense");
+  return (
+    <p data-testid="filter-result" className="text-sm text-zinc-600 dark:text-zinc-400">
+      {transactions.length}件
+      {income > 0 && ` ・ 収入 ${formatYen(income)}`}
+      {expense > 0 && ` ・ 支出 ${formatYen(expense)}`}
+    </p>
+  );
+}
 
 type Dialog = { mode: "create" } | { mode: "edit"; transaction: Transaction } | null;
 
@@ -21,19 +38,22 @@ export function TransactionsView({
   today,
   transactions,
   categories,
+  filter,
 }: {
   month: string;
   today: string;
   transactions: Transaction[];
   categories: Category[];
+  filter: TransactionFilter;
 }) {
   const router = useRouter();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const filtered = isFiltered(filter);
 
   function handleSaved(savedMonth: string) {
     setDialog(null);
     // 保存した収支が表示中の月と違う月なら、その月を表示する（同じ月なら一覧は自動で更新される）
-    if (savedMonth !== month) router.push(`/transactions?month=${savedMonth}`);
+    if (savedMonth !== month) router.push(transactionsHref(savedMonth, filter));
   }
 
   return (
@@ -49,11 +69,15 @@ export function TransactionsView({
         </button>
       </div>
 
-      <MonthNav month={month} basePath="/transactions" />
+      <MonthNav month={month} basePath="/transactions" query={filterQuery(filter)} />
+
+      <TransactionFilterForm month={month} filter={filter} categories={categories} />
+
+      {filtered && transactions.length > 0 && <FilterResult transactions={transactions} />}
 
       {transactions.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          この月の収支はまだありません
+          {filtered ? "この月には、条件に合う収支がありません" : "この月の収支はまだありません"}
         </p>
       ) : (
         <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">

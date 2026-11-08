@@ -1,12 +1,14 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./pool";
 import { monthRange, yearRange } from "@/lib/month";
+import { NO_FILTER } from "@/lib/transaction-filter";
 import type {
   CategoryExpense,
   CategoryYearlyExpense,
   MonthlySummary,
   MonthlyTotal,
   Transaction,
+  TransactionFilter,
   TransactionInput,
   YearlyOverview,
 } from "@/lib/types";
@@ -37,12 +39,35 @@ const toTransaction = (r: TransactionRow): Transaction => ({
   memo: r.memo,
 });
 
-/** 指定した月（"YYYY-MM"）の収支を、新しい順に返す */
-export async function listTransactionsByMonth(month: string): Promise<Transaction[]> {
+/** LIKE の特殊文字（\ % _）を、ただの文字として検索できるようにエスケープする */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+/** 指定した月（"YYYY-MM"）の収支を、新しい順に返す。filter で絞り込める */
+export async function listTransactionsByMonth(
+  month: string,
+  filter: TransactionFilter = NO_FILTER,
+): Promise<Transaction[]> {
   const { start, end } = monthRange(month);
+  // 条件は固定の SQL 断片だけを組み合わせ、値はすべてプレースホルダで渡す
+  const conditions = ["t.date >= ?", "t.date < ?"];
+  const params: (string | number)[] = [start, end];
+  if (filter.keyword) {
+    conditions.push("t.memo LIKE ?");
+    params.push(`%${escapeLike(filter.keyword)}%`);
+  }
+  if (filter.type) {
+    conditions.push("t.type = ?");
+    params.push(filter.type);
+  }
+  if (filter.categoryId !== null) {
+    conditions.push("t.category_id = ?");
+    params.push(filter.categoryId);
+  }
   const [rows] = await pool.query<TransactionRow[]>(
-    `${SELECT_SQL} WHERE t.date >= ? AND t.date < ? ORDER BY t.date DESC, t.id DESC`,
-    [start, end],
+    `${SELECT_SQL} WHERE ${conditions.join(" AND ")} ORDER BY t.date DESC, t.id DESC`,
+    params,
   );
   return rows.map(toTransaction);
 }

@@ -57,6 +57,13 @@ export interface CategoryExpense {
   total: number;
 }
 
+/** 収支一覧の絞り込み条件。null・空文字は「指定なし」 */
+export interface TransactionFilter {
+  keyword: string; // メモに含まれる文字
+  type: TransactionType | null;
+  categoryId: number | null;
+}
+
 export interface TransactionInput {
   date: string;
   type: TransactionType;

@@ -4,6 +4,7 @@ import { TransactionsView } from "@/components/TransactionsView";
 import { listCategories } from "@/lib/db/categories";
 import { listTransactionsByMonth } from "@/lib/db/transactions";
 import { parseMonth, today } from "@/lib/month";
+import { parseTransactionFilter } from "@/lib/transaction-filter";
 
 async function TransactionsData({
   searchParams,
@@ -11,9 +12,11 @@ async function TransactionsData({
   searchParams: PageProps<"/transactions">["searchParams"];
 }) {
   await connection(); // 月の指定がないときは「今日」から今月を決めるため、毎回のリクエストで処理する
-  const month = parseMonth((await searchParams).month);
+  const params = await searchParams;
+  const month = parseMonth(params.month);
+  const filter = parseTransactionFilter(params);
   const [transactions, categories] = await Promise.all([
-    listTransactionsByMonth(month),
+    listTransactionsByMonth(month, filter),
     listCategories(),
   ]);
 
@@ -23,6 +26,7 @@ async function TransactionsData({
       today={today()}
       transactions={transactions}
       categories={categories}
+      filter={filter}
     />
   );
 }
