@@ -24,8 +24,12 @@ export function currentMonth(): string {
   return today().slice(0, 7);
 }
 
+export function isMonth(value: unknown): value is string {
+  return typeof value === "string" && MONTH_RE.test(value);
+}
+
 export function parseMonth(value: string | string[] | undefined): string {
-  return typeof value === "string" && MONTH_RE.test(value) ? value : currentMonth();
+  return isMonth(value) ? value : currentMonth();
 }
 
 export function shiftMonth(month: string, delta: number): string {
