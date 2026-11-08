@@ -13,17 +13,19 @@
 
 | 領域 | 技術 |
 |---|---|
-| フロントエンド | Next.js (App Router) / React / TypeScript |
-| スタイル | Tailwind CSS |
+| フロントエンド | Next.js 16 (App Router) / React 19 / TypeScript 6 |
+| スタイル | Tailwind CSS 4 |
 | データベース | MySQL 9.7（LTS。Docker で起動） |
 | DB アクセス | mysql2 |
 | グラフ | Recharts |
+| テスト | Vitest |
+| 実行環境 | Node.js 26（LTS） |
 
 ローカルで動かすアプリです（公開 URL はありません）。認証がないため、開発サーバー（3000）と MySQL（3306）は、このパソコン（127.0.0.1）からの接続だけを受け付けます。
 
 ## セットアップ
 
-必要なもの: Node.js 20 以上、Docker（Docker Desktop）
+必要なもの: Node.js 26（LTS）以上、Docker（Docker Desktop）
 
 1. 依存パッケージをインストールする
 

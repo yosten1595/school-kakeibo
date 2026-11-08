@@ -15,14 +15,19 @@
 - スマホ（外出先での入力）とPC（月末の振り返り）の両方で使う
 
 ## 3. 技術スタック
+バージョンは、安定版（正式リリース）の中で最新を使う。長期サポート版（LTS）があるものは、LTS の最新を使う。ほかの部品がまだ対応していないものは、動く範囲で最新にし、理由を備考に書く（2026年11月時点）。
+
 | 領域 | 採用 | 備考 |
 |---|---|---|
-| フロントエンド | Next.js (App Router) + TypeScript | |
-| スタイル | Tailwind CSS | 採用済み |
+| フロントエンド | Next.js 16 (App Router) + React 19 | |
+| 言語 | TypeScript 6.0 | 7.0 は、lint で使う typescript-eslint が対応していない（6.1 未満まで）ため、6.0 系の最新を使う |
+| スタイル | Tailwind CSS 4 | |
 | データベース | MySQL 9.7（LTS） | Docker で起動する（`docker-compose.yml`）。LTS（長期サポート版）の最新を使う |
-| DB アクセス | mysql2（SQL を直接書く） | Next.js のサーバー側（Server Components / Server Actions）から利用 |
-| 実行環境 | ローカルのみ | 公開 URL は作らない |
-| グラフ | Recharts | |
+| DB アクセス | mysql2 3（SQL を直接書く） | Next.js のサーバー側（Server Components / Server Actions）から利用 |
+| グラフ | Recharts 3 | |
+| テスト | Vitest 5 | 計算・検証の処理の自動テスト |
+| lint | ESLint 9 | 10 は、Next.js の lint 設定（eslint-config-next）が使う eslint-plugin-react / import / jsx-a11y が対応していないため、9 系の最新を使う |
+| 実行環境 | Node.js 26（LTS）、ローカルのみ | 公開 URL は作らない |
 
 - ログイン（認証）機能は作らない。1人専用のアプリとする（4.3 参照）。
 - 前のアプリ（PostgreSQL）とは別の種類のデータベースを使う。
