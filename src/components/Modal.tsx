@@ -20,7 +20,11 @@ export function Modal({
 
   useEffect(() => {
     const dialog = ref.current;
-    if (dialog && !dialog.open) dialog.showModal();
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+      // showModal は先頭のボタン（×）にフォーカスを移すので、data-autofocus を付けた要素があればそちらに移す
+      dialog.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    }
   }, []);
 
   return (

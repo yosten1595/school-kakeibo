@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   createCategoryAction,
   deleteCategoryAction,
   updateCategoryAction,
 } from "@/app/categories/actions";
 import { CategoryForm } from "@/components/CategoryForm";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
 import type { CategoryWithUsage, TransactionType } from "@/lib/types";
 
@@ -27,11 +28,16 @@ function usageText(c: CategoryWithUsage): string {
 export function CategoriesView({ categories }: { categories: CategoryWithUsage[] }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // 削除の確認ダイアログを出しているカテゴリ
+  const [deleting, setDeleting] = useState<CategoryWithUsage | null>(null);
+  const [deletePending, startDelete] = useTransition();
 
-  async function handleDelete(c: CategoryWithUsage) {
-    if (!window.confirm(`カテゴリ「${c.name}」を削除します。よろしいですか？`)) return;
-    const result = await deleteCategoryAction(c.id);
-    setMessage(result.error ?? null);
+  function confirmDelete(c: CategoryWithUsage) {
+    startDelete(async () => {
+      const result = await deleteCategoryAction(c.id);
+      setMessage(result.error ?? null);
+      setDeleting(null);
+    });
   }
 
   return (
@@ -93,7 +99,10 @@ export function CategoriesView({ categories }: { categories: CategoryWithUsage[]
                         type="button"
                         disabled={inUse}
                         title={inUse ? "使用中のカテゴリは削除できません" : undefined}
-                        onClick={() => handleDelete(c)}
+                        onClick={() => {
+                          setMessage(null);
+                          setDeleting(c);
+                        }}
                         className="rounded px-2 py-1 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950"
                       >
                         削除
@@ -106,6 +115,15 @@ export function CategoriesView({ categories }: { categories: CategoryWithUsage[]
           </section>
         );
       })}
+
+      {deleting && (
+        <ConfirmDialog
+          message={`カテゴリ「${deleting.name}」を削除します。よろしいですか？`}
+          pending={deletePending}
+          onConfirm={() => confirmDelete(deleting)}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
 
       {dialog?.mode === "create" && (
         <Modal title="カテゴリの追加" onClose={() => setDialog(null)}>
