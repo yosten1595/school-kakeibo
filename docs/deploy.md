@@ -14,8 +14,9 @@ ECR: アプリのイメージ置き場 / SSM Parameter Store: DB のパスワー
 | 守り方 | 内容 |
 |---|---|
 | アプリ（80 番） | セキュリティグループで、`allowed_cidr`（このPCの IP/32）からだけ許可 |
+| EC2 の外向き | HTTPS（443 番、ECR・SSM・OS の更新）と、RDS への 3306 番だけ許可 |
 | SSH（22 番） | 開けない。EC2 に入るときは SSM Session Manager を使う |
-| RDS（3306 番） | private subnet に置き、public アクセスも無効。EC2 のセキュリティグループからだけ許可 |
+| RDS（3306 番） | private subnet に置き、public アクセスも無効。EC2 のセキュリティグループからだけ許可。RDS から外へ出る通信は許可しない |
 | DB のパスワード | Terraform がランダムに作り、SSM Parameter Store（暗号化）に置く。EC2 が起動時に読む |
 | 通信 | ドメインと証明書がないので HTTP のみ（暗号化されない）。IP 制限で守る |
 

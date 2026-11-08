@@ -18,12 +18,26 @@ resource "aws_vpc_security_group_ingress_rule" "app_http" {
 }
 
 # SSH（22 番）は開けない。EC2 の操作は SSM Session Manager で行う。
-# 外向き: ECR からのイメージ取得、SSM、OS の更新に使う
-resource "aws_vpc_security_group_egress_rule" "app_all" {
+
+# 外向き 1: HTTPS だけ。ECR からのイメージ取得、SSM、OS の更新（dnf）はすべて 443 番を使う
+# （DNS は VPC 内の Amazon DNS を使うので、セキュリティグループで許可しなくても届く）
+resource "aws_vpc_security_group_egress_rule" "app_https" {
   security_group_id = aws_security_group.app.id
-  description       = "Outbound for ECR, SSM and package updates"
+  description       = "HTTPS for ECR, SSM and package updates"
   cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+}
+
+# 外向き 2: RDS（MySQL）へ。宛先は DB のセキュリティグループだけ
+resource "aws_vpc_security_group_egress_rule" "app_to_db" {
+  security_group_id            = aws_security_group.app.id
+  description                  = "MySQL to the RDS instance"
+  referenced_security_group_id = aws_security_group.db.id
+  ip_protocol                  = "tcp"
+  from_port                    = 3306
+  to_port                      = 3306
 }
 
 resource "aws_security_group" "db" {
@@ -42,3 +56,6 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
   from_port                    = 3306
   to_port                      = 3306
 }
+
+# DB の外向きのルールは作らない（Terraform で作ったセキュリティグループは、既定の「全部許可」が消える）。
+# DB から外へ出る通信は一切許可しない。
