@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { budgetFieldName, budgetStatus, formatUsage, parseBudgetAmount } from "./budget";
+import {
+  budgetFieldName,
+  budgetStatus,
+  formatAmountInput,
+  formatUsage,
+  parseBudgetAmount,
+  positionAfterDigits,
+  sumBudgets,
+} from "./budget";
 
 describe("budgetStatus（80% 以上で注意、100% 超で警告）", () => {
   it.each([
@@ -57,5 +65,65 @@ describe("budgetFieldName", () => {
   it("全体は total、カテゴリ別は category-<id>", () => {
     expect(budgetFieldName(null)).toBe("total");
     expect(budgetFieldName(7)).toBe("category-7");
+  });
+});
+
+describe("sumBudgets（月全体の予算 = カテゴリ別の合計）", () => {
+  it("予算なし（null）を除いて合計する", () => {
+    expect(sumBudgets([40000, null, 15000, 30000])).toBe(85000);
+    expect(sumBudgets([1])).toBe(1);
+  });
+
+  it("すべて予算なし、またはカテゴリがないときは予算なし（null）", () => {
+    expect(sumBudgets([null, null])).toBeNull();
+    expect(sumBudgets([])).toBeNull();
+  });
+});
+
+describe("formatAmountInput（入力中に 3 桁ごとのカンマを付ける）", () => {
+  it.each([
+    ["", ""],
+    ["5", "5"],
+    ["999", "999"],
+    ["1000", "1,000"],
+    ["40000", "40,000"],
+    ["1234567", "1,234,567"],
+    ["99999999", "99,999,999"],
+  ])("「%s」→「%s」", (raw, expected) => {
+    expect(formatAmountInput(raw)).toBe(expected);
+  });
+
+  it("カンマの位置がずれた入力や全角数字も付け直す", () => {
+    expect(formatAmountInput("40,0000")).toBe("400,000");
+    expect(formatAmountInput("4,000")).toBe("4,000");
+    expect(formatAmountInput("６５０００")).toBe("65,000");
+    expect(formatAmountInput("¥1000円")).toBe("1,000");
+  });
+
+  it("先頭の 0 は除く（0 だけのときは 0 を残す）", () => {
+    expect(formatAmountInput("0012")).toBe("12");
+    expect(formatAmountInput("0")).toBe("0");
+  });
+
+  it("数字以外が混ざっているときはそのまま返す（エラーを表示するため）", () => {
+    expect(formatAmountInput("12a")).toBe("12a");
+    expect(formatAmountInput("1.5")).toBe("1.5");
+  });
+
+  it("付けたカンマのある入力も、parseBudgetAmount で同じ金額になる", () => {
+    expect(parseBudgetAmount(formatAmountInput("1234567"))).toEqual({ ok: true, amount: 1234567 });
+  });
+});
+
+describe("positionAfterDigits（カンマを付けた後のカーソル位置）", () => {
+  it("count 個目の数字の直後の位置", () => {
+    expect(positionAfterDigits("40,000", 2)).toBe(2);
+    expect(positionAfterDigits("40,000", 3)).toBe(4);
+    expect(positionAfterDigits("1,234,567", 7)).toBe(9);
+  });
+
+  it("0 個なら先頭、数字が足りなければ末尾", () => {
+    expect(positionAfterDigits("1,000", 0)).toBe(0);
+    expect(positionAfterDigits("1,000", 9)).toBe(5);
   });
 });

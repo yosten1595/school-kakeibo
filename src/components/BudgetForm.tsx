@@ -1,56 +1,59 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { saveBudgetsAction } from "@/app/budgets/actions";
-import { budgetFieldName } from "@/lib/budget";
+import { budgetFieldName, formatAmountInput, parseBudgetAmount, positionAfterDigits, sumBudgets } from "@/lib/budget";
 import { formatMonth, formatYen } from "@/lib/month";
 import type { BudgetFormState } from "@/lib/types";
 
 const inputClass =
   "h-[42px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-right tabular-nums dark:border-zinc-700 dark:bg-zinc-900";
 
-function BudgetRow({
-  name,
+/** 予算額を入力欄に入れるときの文字列（3 桁ごとのカンマつき。予算なしは空欄） */
+function toInputValue(amount: number | undefined): string {
+  return amount === undefined ? "" : formatAmountInput(String(amount));
+}
+
+function RowLayout({
   label,
-  spent,
-  defaultAmount,
+  labelFor,
+  note,
   error,
+  errorId,
+  children,
 }: {
-  name: string;
   label: string;
-  spent: number;
-  defaultAmount: number | undefined;
+  labelFor?: string;
+  /** ラベルの下に出す説明。1 項目ずつ別の行に出す */
+  note: string[];
   error?: string;
+  errorId: string;
+  children: ReactNode;
 }) {
-  const id = `budget-${name}`;
   return (
     <li className="py-2.5">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <label htmlFor={id} className="block truncate font-medium">
-            {label}
-          </label>
-          <div className="text-sm text-zinc-600 tabular-nums dark:text-zinc-400">
-            今月の支出 {formatYen(spent)}
-          </div>
+          {labelFor ? (
+            <label htmlFor={labelFor} className="block truncate font-medium">
+              {label}
+            </label>
+          ) : (
+            <div className="truncate font-medium">{label}</div>
+          )}
+          {note.map((line) => (
+            <div key={line} className="text-sm text-zinc-600 tabular-nums dark:text-zinc-400">
+              {line}
+            </div>
+          ))}
         </div>
         <div className="flex w-40 shrink-0 items-center gap-1.5">
-          <input
-            id={id}
-            name={name}
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="予算なし"
-            defaultValue={defaultAmount ?? ""}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${id}-error` : undefined}
-            className={inputClass}
-          />
+          {children}
           <span className="text-sm">円</span>
         </div>
       </div>
       {error && (
-        <p id={`${id}-error`} role="alert" className="mt-1 text-right text-sm text-red-700 dark:text-red-400">
+        <p id={errorId} role="alert" className="mt-1 text-right text-sm text-red-700 dark:text-red-400">
           {error}
         </p>
       )}
@@ -58,7 +61,11 @@ function BudgetRow({
   );
 }
 
-/** 1か月分の予算（全体と、支出カテゴリごと）をまとめて編集する。空欄は「予算なし」 */
+/**
+ * 1か月分の予算をまとめて編集する。空欄は「予算なし」。
+ * 月全体の予算は入力せず、カテゴリ別の予算の合計を自動で表示・保存する。
+ * 金額は入力中に 3 桁ごとのカンマを自動で付ける。
+ */
 export function BudgetForm({
   month,
   previousMonth,
@@ -75,21 +82,55 @@ export function BudgetForm({
   previousAmounts: Record<string, number>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(categories.map((c) => [budgetFieldName(c.id), toInputValue(amounts[budgetFieldName(c.id)])])),
+  );
   const [state, setState] = useState<BudgetFormState>({});
   const [pending, startTransition] = useTransition();
+  // カンマを付けた後に、カーソルを入力した数字の直後へ戻すための情報
+  const caret = useRef<{ name: string; position: number } | null>(null);
   const errors = state.errors ?? {};
-  const hasPrevious = Object.keys(previousAmounts).length > 0;
+  const hasPrevious = categories.some((c) => previousAmounts[budgetFieldName(c.id)] !== undefined);
 
-  /** 前月の予算を入力欄に入れる（前月に予算がない項目は空欄にする）。保存はしない */
-  function fillFromPrevious() {
-    const form = formRef.current;
-    if (!form) return;
-    for (const name of [budgetFieldName(null), ...categories.map((c) => budgetFieldName(c.id))]) {
-      const input = form.elements.namedItem(name);
-      if (input instanceof HTMLInputElement) input.value = String(previousAmounts[name] ?? "");
+  // 入力中の値から合計を出す（数字として読めない欄は数えない。保存時にはエラーになる）
+  const total = sumBudgets(
+    categories.map((c) => {
+      const result = parseBudgetAmount(values[budgetFieldName(c.id)] ?? "");
+      return result.ok ? result.amount : null;
+    }),
+  );
+
+  useLayoutEffect(() => {
+    if (!caret.current) return;
+    const input = formRef.current?.elements.namedItem(caret.current.name);
+    if (input instanceof HTMLInputElement && document.activeElement === input) {
+      input.setSelectionRange(caret.current.position, caret.current.position);
     }
+    caret.current = null;
+  });
+
+  function handleChange(name: string, input: HTMLInputElement) {
+    const raw = input.value;
+    const formatted = formatAmountInput(raw);
+    // カーソルより前にある数字の数を数え、カンマを付けた後も同じ数字の直後にカーソルを置く
+    const before = raw.slice(0, input.selectionStart ?? raw.length).normalize("NFKC");
+    const digitsBefore = (before.match(/\d/g) ?? []).length;
+    caret.current = { name, position: positionAfterDigits(formatted, digitsBefore) };
+    setValues((v) => ({ ...v, [name]: formatted }));
+    if (state.saved) setState({});
+  }
+
+  /** 前月のカテゴリ別の予算を入力欄に入れる（前月に予算がない項目は空欄にする）。保存はしない */
+  function fillFromPrevious() {
+    setValues(
+      Object.fromEntries(
+        categories.map((c) => [budgetFieldName(c.id), toInputValue(previousAmounts[budgetFieldName(c.id)])]),
+      ),
+    );
     setState({});
   }
+
+  const totalName = budgetFieldName(null);
 
   return (
     <form
@@ -99,11 +140,10 @@ export function BudgetForm({
         const formData = new FormData(e.currentTarget);
         startTransition(async () => setState(await saveBudgetsAction(month, formData)));
       }}
-      onChange={() => state.saved && setState({})}
       className="flex flex-col gap-4"
     >
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        {formatMonth(month)}の予算を入力します。空欄にした項目は予算なしになります。
+        {formatMonth(month)}の予算をカテゴリ別に入力します。月全体の予算は、カテゴリ別の予算の合計になります。空欄にした項目は予算なしになります。
       </p>
 
       {errors.form && (
@@ -115,29 +155,54 @@ export function BudgetForm({
       <section>
         <h2 className="mb-1 font-semibold">全体</h2>
         <ul className="rounded-lg border border-zinc-200 px-3 dark:border-zinc-800">
-          <BudgetRow
-            name={budgetFieldName(null)}
+          <RowLayout
             label="月全体の予算"
-            spent={totalSpent}
-            defaultAmount={amounts[budgetFieldName(null)]}
-            error={errors[budgetFieldName(null)]}
-          />
+            note={["カテゴリ別の合計（自動）", `今月の支出 ${formatYen(totalSpent)}`]}
+            error={errors[totalName]}
+            errorId={`budget-${totalName}-error`}
+          >
+            <output
+              aria-live="polite"
+              aria-describedby={errors[totalName] ? `budget-${totalName}-error` : undefined}
+              className="flex h-[42px] w-full items-center justify-end rounded-md bg-zinc-100 px-3 py-2 font-semibold tabular-nums dark:bg-zinc-800"
+            >
+              {total === null ? "予算なし" : total.toLocaleString("ja-JP")}
+            </output>
+          </RowLayout>
         </ul>
       </section>
 
       <section>
         <h2 className="mb-1 font-semibold">カテゴリ別</h2>
         <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 px-3 dark:divide-zinc-800 dark:border-zinc-800">
-          {categories.map((c) => (
-            <BudgetRow
-              key={c.id}
-              name={budgetFieldName(c.id)}
-              label={c.name}
-              spent={c.spent}
-              defaultAmount={amounts[budgetFieldName(c.id)]}
-              error={errors[budgetFieldName(c.id)]}
-            />
-          ))}
+          {categories.map((c) => {
+            const name = budgetFieldName(c.id);
+            const id = `budget-${name}`;
+            const error = errors[name];
+            return (
+              <RowLayout
+                key={c.id}
+                label={c.name}
+                labelFor={id}
+                note={[`今月の支出 ${formatYen(c.spent)}`]}
+                error={error}
+                errorId={`${id}-error`}
+              >
+                <input
+                  id={id}
+                  name={name}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="予算なし"
+                  value={values[name] ?? ""}
+                  onChange={(e) => handleChange(name, e.currentTarget)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? `${id}-error` : undefined}
+                  className={inputClass}
+                />
+              </RowLayout>
+            );
+          })}
         </ul>
       </section>
 

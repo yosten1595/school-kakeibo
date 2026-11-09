@@ -27,7 +27,7 @@ export type BudgetAmountResult = { ok: true; amount: number | null } | { ok: fal
 
 /** 予算額の入力を検証する。空欄は「予算なし」（null）。全角数字・カンマ・円記号は受け付ける */
 export function parseBudgetAmount(raw: string): BudgetAmountResult {
-  const value = raw.normalize("NFKC").replace(/[\s,¥円]/g, "");
+  const value = normalizeAmount(raw);
   if (value === "") return { ok: true, amount: null };
   if (!/^\d+$/.test(value)) return { ok: false, error: "金額は数字で入力してください" };
   const amount = Number(value);
@@ -38,4 +38,38 @@ export function parseBudgetAmount(raw: string): BudgetAmountResult {
     return { ok: false, error: `${MAX_BUDGET.toLocaleString("ja-JP")} 円以下で入力してください` };
   }
   return { ok: true, amount };
+}
+
+/**
+ * 月全体の予算 = カテゴリ別の予算の合計。予算なし（null）は数えない。
+ * カテゴリ別がすべて予算なしなら、全体も予算なし（null）。
+ */
+export function sumBudgets(amounts: (number | null)[]): number | null {
+  const set = amounts.filter((a): a is number => a !== null);
+  return set.length === 0 ? null : set.reduce((sum, a) => sum + a, 0);
+}
+
+/** 入力の正規化（全角→半角、空白・カンマ・円記号・「円」を除く）。parseBudgetAmount と同じ規則 */
+function normalizeAmount(raw: string): string {
+  return raw.normalize("NFKC").replace(/[\s,¥円]/g, "");
+}
+
+/**
+ * 入力中の金額に 3 桁ごとのカンマを付ける（例: "40000" → "40,000"）。
+ * 数字以外が混ざっているときは、エラーを表示できるよう入力をそのまま返す。
+ */
+export function formatAmountInput(raw: string): string {
+  const digits = normalizeAmount(raw);
+  if (!/^\d+$/.test(digits)) return raw;
+  return digits.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** formatted の中で、先頭から count 個目の数字の直後の位置（カンマを付けた後もカーソルを同じ数字の後ろに置くため） */
+export function positionAfterDigits(formatted: string, count: number): number {
+  if (count <= 0) return 0;
+  let seen = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i]) && ++seen === count) return i + 1;
+  }
+  return formatted.length;
 }
