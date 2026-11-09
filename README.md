@@ -47,7 +47,7 @@
 |---|---|
 | フロントエンド | Next.js 16 (App Router) / React 19 / TypeScript 6 |
 | スタイル | Tailwind CSS 4 |
-| データベース | MySQL 9.7（LTS。Docker で起動） |
+| データベース | MySQL 9.7（LTS。ローカルは Docker）/ AWS では RDS for MySQL 8.4（LTS） |
 | DB アクセス | mysql2 |
 | グラフ | Recharts |
 | テスト | Vitest |

@@ -22,7 +22,7 @@
 | フロントエンド | Next.js 16 (App Router) + React 19 | |
 | 言語 | TypeScript 6.0 | 7.0 は、lint で使う typescript-eslint が対応していない（6.1 未満まで）ため、6.0 系の最新を使う |
 | スタイル | Tailwind CSS 4 | |
-| データベース | MySQL 9.7（LTS） | Docker で起動する（`docker-compose.yml`）。LTS（長期サポート版）の最新を使う |
+| データベース | MySQL 9.7（LTS）、AWS では RDS for MySQL 8.4（LTS） | ローカルは Docker で起動する（`docker-compose.yml`）。LTS（長期サポート版）の最新を使う。RDS は 9 系に対応していない（2026年11月時点で使えるのは 8.4 系まで）ため、AWS では RDS で使える LTS の最新（8.4 系）を使う。アプリの SQL は 8.4 でも動く |
 | DB アクセス | mysql2 3（SQL を直接書く） | Next.js のサーバー側（Server Components / Server Actions）から利用 |
 | グラフ | Recharts 3 | |
 | テスト | Vitest 5 | 計算・検証の処理の自動テスト |
