@@ -59,14 +59,16 @@ FROM sample_days WHERE DAY(day) = 25;
 
 DROP TEMPORARY TABLE sample_days;
 
--- 予算: 当月の全体予算（category_id が NULL）と、カテゴリ別予算
+-- 予算: 当月のカテゴリ別予算と、全体予算（category_id が NULL）。
+-- アプリと同じく、全体予算はカテゴリ別予算の合計にする
 SET @this_month = DATE_FORMAT(CURDATE(), '%Y-%m-01');
-
-INSERT INTO budgets (month, category_id, amount) VALUES
-  (@this_month, NULL, 200000);
 
 INSERT INTO budgets (month, category_id, amount)
 SELECT @this_month, id,
-       CASE name WHEN '食費' THEN 40000 WHEN '日用品' THEN 10000 WHEN '交通費' THEN 10000 WHEN '娯楽' THEN 15000 END
+       CASE name WHEN '食費' THEN 40000 WHEN '日用品' THEN 10000 WHEN '交通費' THEN 10000
+                 WHEN '住居' THEN 70000 WHEN '娯楽' THEN 15000 END
 FROM categories
-WHERE name IN ('食費', '日用品', '交通費', '娯楽');
+WHERE name IN ('食費', '日用品', '交通費', '住居', '娯楽');
+
+INSERT INTO budgets (month, category_id, amount)
+SELECT @this_month, NULL, SUM(amount) FROM budgets WHERE month = @this_month AND category_id IS NOT NULL;
