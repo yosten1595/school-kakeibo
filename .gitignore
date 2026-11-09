@@ -43,3 +43,10 @@ next-env.d.ts
 
 # MySQL のバックアップ（README の移行手順で作るもの）
 /backup*.sql
+
+# Terraform（state にはパスワードなどの秘密が入るので Git に含めない）
+/infra/.terraform/
+/infra/*.tfstate
+/infra/*.tfstate.*
+/infra/terraform.tfvars
+/infra/*.tfplan

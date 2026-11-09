@@ -1,0 +1,67 @@
+#!/bin/bash
+# EC2 の初回起動時に 1 回だけ実行される。Docker を入れ、アプリを起動する仕組みを作る。
+set -euxo pipefail
+
+dnf install -y docker
+systemctl enable --now docker
+
+# t3.micro はメモリが 1GB しかないので、念のためスワップを 1GB 作る
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=1024
+  chmod 600 /swapfile
+  mkswap /swapfile
+  echo '/swapfile none swap defaults 0 0' >> /etc/fstab
+fi
+swapon -a
+
+mkdir -p /opt/kakeibo
+
+# アプリを（再）起動するスクリプト。更新時もこれを実行し直す。
+cat > /opt/kakeibo/start.sh <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+aws ecr get-login-password --region ${region} \
+  | docker login --username AWS --password-stdin ${registry}
+docker pull ${image}
+
+# DB の接続情報をファイルに書く（root だけが読める）。パスワードは SSM Parameter Store から取る
+umask 077
+{
+  echo "MYSQL_HOST=${db_host}"
+  echo "MYSQL_PORT=3306"
+  echo "MYSQL_DATABASE=${db_name}"
+  echo "MYSQL_USER=${db_user}"
+  echo "MYSQL_PASSWORD=$(aws ssm get-parameter --region ${region} --name ${password_param} --with-decryption --query Parameter.Value --output text)"
+} > /opt/kakeibo/app.env
+
+docker rm -f kakeibo || true
+docker run -d --name kakeibo --restart always \
+  --env-file /opt/kakeibo/app.env \
+  --memory 600m \
+  -p 80:3000 \
+  ${image}
+
+docker image prune -f
+SCRIPT
+chmod 700 /opt/kakeibo/start.sh
+
+# 起動のたびに最新のイメージで立ち上げる
+cat > /etc/systemd/system/kakeibo.service <<'UNIT'
+[Unit]
+Description=Kakeibo app container
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/kakeibo/start.sh
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now kakeibo.service

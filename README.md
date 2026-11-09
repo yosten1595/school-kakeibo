@@ -1,6 +1,6 @@
 # school-kakeibo
 
-収入・支出を記録し、月別・週別の推移、カテゴリ別の内訳、予算の使用状況をひと目で確認できる家計簿アプリです。1人で使うことを想定し、自分のパソコンの中だけで動かします。要件は [docs/requirements.md](docs/requirements.md) にまとめています。
+収入・支出を記録し、月別・週別の推移、カテゴリ別の内訳、予算の使用状況をひと目で確認できる家計簿アプリです。1人で使うことを想定し、自分のパソコンで開発して、AWS には自分のパソコンからだけ開けるように置いています。要件は [docs/requirements.md](docs/requirements.md) にまとめています。
 
 ## デモ動画
 
@@ -47,13 +47,18 @@
 |---|---|
 | フロントエンド | Next.js 16 (App Router) / React 19 / TypeScript 6 |
 | スタイル | Tailwind CSS 4 |
-| データベース | MySQL 9.7（LTS。Docker で起動） |
+| データベース | MySQL 9.7（LTS。ローカルは Docker）/ AWS では RDS for MySQL 8.4（LTS） |
 | DB アクセス | mysql2 |
 | グラフ | Recharts |
 | テスト | Vitest |
-| 実行環境 | Node.js 26（LTS） |
+| 実行環境 | Node.js 26（LTS）、Docker |
+| インフラ | AWS（EC2 + RDS for MySQL、無料枠の範囲）/ Terraform |
 
-ローカルで動かすアプリです（公開 URL はありません）。認証がないため、開発サーバー（3000）と MySQL（3306）は、このパソコン（127.0.0.1）からの接続だけを受け付けます。
+認証がないため、だれでも開ける場所には置いていません。ローカルでは、開発サーバー（3000）と MySQL（3306）は、このパソコン（127.0.0.1）からの接続だけを受け付けます。AWS では、自分のパソコンのグローバル IP からだけアプリに接続できるようにしています（SSH は開けず、DB は外から接続できません）。
+
+## AWS へのデプロイ
+
+Terraform（`infra/`）で EC2・RDS などを作り、Docker イメージを EC2 で動かします。手順は [docs/deploy.md](docs/deploy.md) にまとめています。
 
 ## セットアップ
 
