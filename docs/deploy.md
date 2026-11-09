@@ -86,11 +86,10 @@ ECR: アプリのイメージ置き場 / SSM Parameter Store: DB のパスワー
 
    ```powershell
    $id = terraform output -raw instance_id
-   aws ssm send-command --instance-ids $id --document-name AWS-RunShellScript `
-     --parameters 'commands=["docker exec kakeibo node scripts/db-init.mjs"]' `
-     --query Command.CommandId --output text
-   # 結果を見る（<CommandId> は上で表示された値）
-   aws ssm get-command-invocation --instance-id $id --command-id <CommandId> --query StandardOutputContent --output text
+   aws ssm start-session --target $id
+   # EC2 に入ったあと（「データベースを初期化しました。」と出れば成功）
+   sudo docker exec kakeibo node scripts/db-init.mjs
+   exit
    ```
 
    サンプルデータも入れたいときは、`db-init.mjs` のあとに ` --sample` を付けます。
@@ -102,8 +101,10 @@ ECR: アプリのイメージ置き場 / SSM Parameter Store: DB のパスワー
 ```powershell
 docker build -t "${repo}:latest" ..
 docker push "${repo}:latest"
-aws ssm send-command --instance-ids $id --document-name AWS-RunShellScript `
-  --parameters 'commands=["/opt/kakeibo/start.sh"]'
+aws ssm start-session --target $id
+# EC2 に入ったあと
+sudo /opt/kakeibo/start.sh
+exit
 ```
 
 EC2 の `start.sh` が最新のイメージを取ってきて、コンテナを作り直します。
