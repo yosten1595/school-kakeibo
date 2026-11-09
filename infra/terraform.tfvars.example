@@ -3,7 +3,7 @@
 # このPCのグローバル IP。curl https://checkip.amazonaws.com で調べて、末尾に /32 を付ける
 allowed_cidr = "203.0.113.10/32"
 
-# 予算アラートの送り先
+# 予算アラートの送り先（書かなければ予算アラートは作らない）
 alert_email = "you@example.com"
 
 # RDS で使える MySQL のバージョン（aws rds describe-db-engine-versions で確認）

@@ -21,8 +21,9 @@ variable "allowed_cidr" {
 }
 
 variable "alert_email" {
-  description = "予算アラートを受け取るメールアドレス"
+  description = "予算アラートを受け取るメールアドレス。書かないとき（null）は予算アラートを作らない"
   type        = string
+  default     = null
 }
 
 variable "monthly_budget_usd" {
