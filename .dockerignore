@@ -1,0 +1,17 @@
+# イメージに入れないもの（秘密情報・ビルド結果・開発用ファイル）
+.git
+.github
+.claude
+.next
+node_modules
+coverage
+docs
+infra
+*.md
+.env*
+!.env.example
+backup*.sql
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore
