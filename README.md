@@ -39,6 +39,101 @@ F-01〜F-14 のすべての機能を順に紹介しています。
 
 ほかに、OS の設定に合わせたダークモード、スマホ幅（375px〜）での表示、データを読み込めなかったときの原因つきのエラー表示に対応しています。
 
+## 設計
+
+くわしくは [要件定義書](docs/requirements.md) にまとめています。
+
+| 資料 | 場所 |
+|---|---|
+| 画面一覧・画面遷移図 | [要件定義書「5. 画面一覧」](docs/requirements.md#5-画面一覧) |
+| DB 設計（ER 図・テーブル定義・制約・CRUD 表・環境） | [要件定義書「6. データ設計」](docs/requirements.md#6-データ設計) |
+| API 仕様（画面の URL と Server Actions） | [要件定義書「7. API 仕様」](docs/requirements.md#7-api-仕様) |
+
+### 画面遷移図
+
+```mermaid
+flowchart LR
+  menu(["画面上部のメニュー<br/>（全画面に表示）"])
+  dash["ダッシュボード<br/>/"]
+  tx["収支一覧<br/>/transactions"]
+  txForm["収支の登録・編集<br/>（モーダル）"]
+  txDel["収支の削除の確認<br/>（ダイアログ）"]
+  trendY["推移：年間<br/>/trends"]
+  trendW["推移：週別<br/>/trends?view=weekly"]
+  bud["予算<br/>/budgets"]
+  cat["カテゴリ<br/>/categories"]
+  catForm["カテゴリの追加・編集<br/>（モーダル）"]
+  catDel["カテゴリの削除の確認<br/>（ダイアログ）"]
+  nf["ページが見つかりません<br/>（存在しない URL）"]
+
+  menu --> dash
+  menu --> tx
+  menu --> trendY
+  menu --> bud
+  menu --> cat
+  dash -- "すべて見る・登録する" --> tx
+  dash -- "予算を変更する／予算を設定する" --> bud
+  tx -- "＋ 登録／編集" --> txForm
+  txForm -- "登録する・更新する／キャンセル・Esc" --> tx
+  tx -- "削除" --> txDel
+  txDel -- "削除する／キャンセル・Esc" --> tx
+  trendY -- "週別" --> trendW
+  trendW -- "年間" --> trendY
+  cat -- "＋ 追加／編集" --> catForm
+  catForm -- "追加する・更新する／キャンセル・Esc" --> cat
+  cat -- "削除" --> catDel
+  catDel -- "削除する／キャンセル・Esc" --> cat
+  nf -- "収支一覧へ戻る" --> tx
+```
+
+### ER 図
+
+```mermaid
+erDiagram
+  categories ||--o{ transactions : "収支を分類する（category_id, type）"
+  categories |o--o{ budgets : "カテゴリ別の予算（category_id。NULL は月全体）"
+
+  categories {
+    bigint id PK "AUTO_INCREMENT"
+    varchar name UK "50 文字まで。重複不可"
+    enum type "income / expense"
+    datetime created_at "登録日時"
+  }
+  transactions {
+    bigint id PK "AUTO_INCREMENT"
+    date date "収支の発生日"
+    enum type "income / expense"
+    int amount "金額（円）。1 以上"
+    bigint category_id FK "categories.id（type も一致すること）"
+    varchar memo "255 文字まで。任意"
+    datetime created_at "登録日時"
+  }
+  budgets {
+    bigint id PK "AUTO_INCREMENT"
+    date month UK "対象月の 1 日"
+    bigint category_id FK "categories.id。NULL は月全体"
+    int amount "予算額（円）。1 以上"
+    bigint category_key UK "生成列 IFNULL(category_id, 0)"
+  }
+```
+
+### API の一覧
+
+外部に公開する REST API はありません。画面の表示はページの URL（GET）、データの登録・更新・削除は Next.js の Server Actions で行います。
+
+| 種類 | API | 内容 |
+|---|---|---|
+| 画面 | `GET /?month=YYYY-MM` | ダッシュボード |
+| 画面 | `GET /transactions?month=&q=&type=&category=` | 収支一覧（絞り込みつき） |
+| 画面 | `GET /trends?view=yearly|weekly&year=&category=` | 推移（年間・週別） |
+| 画面 | `GET /budgets?month=YYYY-MM` | 予算の入力 |
+| 画面 | `GET /categories` | カテゴリの一覧 |
+| Server Action | `createTransactionAction` / `updateTransactionAction` / `deleteTransactionAction` | 収支の登録・更新・削除 |
+| Server Action | `createCategoryAction` / `updateCategoryAction` / `deleteCategoryAction` | カテゴリの追加・名前の変更・削除 |
+| Server Action | `saveBudgetsAction` | 1 か月分の予算の保存（月全体はカテゴリ別の合計） |
+
+入力の検証・処理・戻り値・エラーは、[要件定義書「7. API 仕様」](docs/requirements.md#7-api-仕様) にあります。
+
 ## 使用技術
 
 | 領域 | 技術 |
