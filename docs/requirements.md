@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 作成日 | 2026-11-03 |
-| 状態 | 第6版（2026-11-09）。必須機能 F-01〜F-14 を実装済み。AWS へのデプロイ（このPCの IP だけ許可）を追加。月全体の予算をカテゴリ別の合計から自動で決めるよう変更（#53） |
+| 状態 | 第7版（2026-11-12）。必須機能 F-01〜F-14 を実装済み。AWS へのデプロイ（このPCの IP だけ許可）を追加。月全体の予算をカテゴリ別の合計から自動で決めるよう変更（#53）。画面遷移図（5.1）、DB 設計（6.1〜6.5）、API 仕様（7）を追加（#55） |
 | 成果物の見せ方 | GitHub の README に、実際の操作の動画（機能を示すテロップつき）を載せる。確認ダイアログは画像でも示す |
 
 ## 1. 目的
@@ -73,8 +73,92 @@
 | 予算 | `/budgets` | 月ごとの予算の設定 (F-08) |
 | カテゴリ管理 | `/categories` | 追加・編集・削除 (F-07) |
 
+### 5.1 画面遷移図
+画面上部のメニュー（ダッシュボード・収支一覧・推移・予算・カテゴリ）は全画面に表示され、どの画面からでも移動できる。モーダルと確認ダイアログは、URL を変えずに画面の上に開く。
+
+```mermaid
+flowchart LR
+  menu(["画面上部のメニュー<br/>（全画面に表示）"])
+  dash["ダッシュボード<br/>/"]
+  tx["収支一覧<br/>/transactions"]
+  txForm["収支の登録・編集<br/>（モーダル）"]
+  txDel["収支の削除の確認<br/>（ダイアログ）"]
+  trendY["推移：年間<br/>/trends"]
+  trendW["推移：週別<br/>/trends?view=weekly"]
+  bud["予算<br/>/budgets"]
+  cat["カテゴリ<br/>/categories"]
+  catForm["カテゴリの追加・編集<br/>（モーダル）"]
+  catDel["カテゴリの削除の確認<br/>（ダイアログ）"]
+  nf["ページが見つかりません<br/>（存在しない URL）"]
+
+  menu --> dash
+  menu --> tx
+  menu --> trendY
+  menu --> bud
+  menu --> cat
+  dash -- "すべて見る・登録する" --> tx
+  dash -- "予算を変更する／予算を設定する" --> bud
+  tx -- "＋ 登録／編集" --> txForm
+  txForm -- "登録する・更新する／キャンセル・Esc" --> tx
+  tx -- "削除" --> txDel
+  txDel -- "削除する／キャンセル・Esc" --> tx
+  trendY -- "週別" --> trendW
+  trendW -- "年間" --> trendY
+  cat -- "＋ 追加／編集" --> catForm
+  catForm -- "追加する・更新する／キャンセル・Esc" --> cat
+  cat -- "削除" --> catDel
+  catDel -- "削除する／キャンセル・Esc" --> cat
+  nf -- "収支一覧へ戻る" --> tx
+```
+
+同じ画面の中での移動（URL のパラメータだけが変わる）:
+
+| 画面 | 操作 | 移動先 |
+|---|---|---|
+| ダッシュボード・収支一覧・予算 | 「← 前月」「翌月 →」 | 同じ画面の前月・翌月（`?month=YYYY-MM`）。表示できる範囲の端では押せない |
+| 収支一覧 | 絞り込み（キーワード・種別・カテゴリ） | 同じ画面（`?q=&type=&category=` を付ける。ブラウザの履歴は増やさない） |
+| 推移（年間） | 「← 前年」「翌年 →」、カテゴリの選択 | 同じ画面（`?year=YYYY&category=<id>`） |
+| 予算 | 「〇月の予算を入れる」 | 同じ画面のまま、入力欄に前月の予算を入れる（保存はしない） |
+| すべての画面 | データを読み込めなかったとき | 同じ画面の上部にエラーと原因を表示（「もう一度読み込む」で読み込み直す） |
+
 ## 6. データ設計
-Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を使わないため、ユーザーを表す列は持たない。
+MySQL に作成する（文字コードは utf8mb4）。認証を使わないため、ユーザーを表す列は持たない。ローカルは Docker の MySQL、AWS は RDS for MySQL（6.5 参照）。
+
+### 6.1 ER 図
+```mermaid
+erDiagram
+  categories ||--o{ transactions : "収支を分類する（category_id, type）"
+  categories |o--o{ budgets : "カテゴリ別の予算（category_id。NULL は月全体）"
+
+  categories {
+    bigint id PK "AUTO_INCREMENT"
+    varchar name UK "50 文字まで。重複不可"
+    enum type "income / expense"
+    datetime created_at "登録日時"
+  }
+  transactions {
+    bigint id PK "AUTO_INCREMENT"
+    date date "収支の発生日"
+    enum type "income / expense"
+    int amount "金額（円）。1 以上"
+    bigint category_id FK "categories.id（type も一致すること）"
+    varchar memo "255 文字まで。任意"
+    datetime created_at "登録日時"
+  }
+  budgets {
+    bigint id PK "AUTO_INCREMENT"
+    date month UK "対象月の 1 日"
+    bigint category_id FK "categories.id。NULL は月全体"
+    int amount "予算額（円）。1 以上"
+    bigint category_key UK "生成列 IFNULL(category_id, 0)"
+  }
+```
+
+- `categories` 1 件に対して、`transactions` と `budgets` は 0 件以上。
+- `transactions` は必ず 1 つのカテゴリに属し、収支の種別とカテゴリの種別が一致しなければならない。
+- `budgets` は月全体の予算（`category_id` が NULL）か、支出カテゴリ 1 つの予算。
+
+### 6.2 テーブル定義
 
 **categories**
 | 列 | 型 | 説明 |
@@ -110,9 +194,131 @@ Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を�
 - 実際の定義は [db/init/01_schema.sql](../db/init/01_schema.sql)。初期カテゴリは `02_categories.sql`、サンプルデータは `03_sample_data.sql`。
 - 金額は円単位の整数で保持する（小数誤差を避ける）。種別(type)で収入/支出を表すため、amount は常に正の値。
 - 集計（月別・週別・カテゴリ別）は、SQL の集計クエリ（GROUP BY）で行う。週は月曜始まりで、その週の月曜日の日付（`DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)`）ごとに集計する。`WEEK()` の週番号と違い、年をまたぐ週も 1 週として集計できる。
-- テーブルは SQL ファイルで管理し、Docker の初回起動時に自動で作成する。
+- テーブルは SQL ファイルで管理し、Docker の初回起動時に自動で作成する（AWS の作り方は 6.5 参照）。
 
-## 7. 非機能要件
+
+### 6.3 制約・インデックス
+| テーブル | 名前 | 種類 | 対象の列 | 目的 |
+|---|---|---|---|---|
+| categories | PRIMARY | 主キー | id | |
+| categories | uq_categories_name | 一意 | name | 同じ名前のカテゴリを作らせない |
+| categories | uq_categories_id_type | 一意 | (id, type) | transactions の複合外部キーの参照先 |
+| transactions | PRIMARY | 主キー | id | |
+| transactions | idx_transactions_date | インデックス | date | 月・年・週の期間で絞り込む集計を速くする |
+| transactions | idx_transactions_category_date | インデックス | (category_id, date) | カテゴリ別の推移（F-13）を速くする |
+| transactions | chk_transactions_amount | CHECK | amount | 金額は 1 以上 |
+| transactions | fk_transactions_category | 外部キー | (category_id, type) → categories (id, type) | 存在しないカテゴリと、種別が違うカテゴリを拒否する。使用中のカテゴリは削除できない（RESTRICT） |
+| budgets | PRIMARY | 主キー | id | |
+| budgets | uq_budgets_month_category | 一意 | (month, category_key) | 同じ月・同じカテゴリの予算を 1 件にする（月全体の予算も 1 件） |
+| budgets | chk_budgets_amount | CHECK | amount | 予算額は 1 以上 |
+| budgets | chk_budgets_month | CHECK | month | 月は必ず 1 日 |
+| budgets | fk_budgets_category | 外部キー | category_id → categories (id) | 存在しないカテゴリを拒否する。予算で使っているカテゴリは削除できない（RESTRICT） |
+
+### 6.4 画面ごとに使うテーブル（CRUD）
+C: 登録、R: 読み取り、U: 更新、D: 削除。
+
+| 画面 | categories | transactions | budgets |
+|---|---|---|---|
+| ダッシュボード（`/`） | R | R（月の合計、カテゴリ別、直近の収支） | R（予算の使用状況） |
+| 収支一覧（`/transactions`） | R（選択肢） | C R U D | |
+| 推移（`/trends`） | R（選択肢） | R（月別・週別・カテゴリ別の集計） | |
+| 予算（`/budgets`） | R（支出カテゴリ） | R（月のカテゴリ別の支出） | R C U D（保存時に一括） |
+| カテゴリ（`/categories`） | C R U D | R（使用件数） | R（使用件数） |
+
+### 6.5 DB の環境と初期化
+| 環境 | DB | 接続 | テーブルの作り方 |
+|---|---|---|---|
+| ローカル（開発） | Docker の MySQL 9.7（`docker-compose.yml`） | 127.0.0.1:3306 だけで待ち受ける。接続情報は `.env.example` の値（変えるときは `.env.local`） | 空のデータボリュームで初回起動したとき、`db/init/*.sql` をファイル名の順に自動で実行する |
+| AWS（本番） | RDS for MySQL 8.4（db.t4g.micro） | private subnet に置き、EC2 からだけ接続できる。パスワードは SSM Parameter Store から読む | デプロイ後に 1 回だけ `node scripts/db-init.mjs` を実行する（テーブルがあるときは何もしない） |
+
+- アプリは `src/lib/db/pool.ts` の接続プール（mysql2、最大 5 接続）から、サーバー側のコードでだけ DB を使う。ブラウザから DB には接続しない。
+- 予算の保存（複数行の登録・更新・削除）は 1 つのトランザクションで行い、途中で失敗したら全部取り消す。
+
+## 7. API 仕様
+外部に公開する REST API は作らない。画面の表示は **ページの URL（GET）**、データの登録・更新・削除は Next.js の **Server Actions** で行う。Server Actions は、画面のフォームから Next.js が自動で作る POST リクエストで呼ばれる関数で、アプリの外から使うことは想定しない。
+
+共通のきまり:
+- 認証はない（1 人専用。接続できる場所を IP で制限する。「8. 非機能要件」を参照）。
+- 金額は円単位の整数。月は `YYYY-MM`、年は `YYYY`、日付は `YYYY-MM-DD`。
+- 入力の検証はサーバー側で行い、エラーは日本語で返す（DB の CHECK 制約・外部キーでも検証する）。
+- SQL はすべてプレースホルダ（`?`）で実行する。
+- 保存に成功したら、関係する画面のキャッシュを捨て（`revalidatePath`）、次の表示で新しいデータを読む。
+
+### 7.1 画面（GET）
+| パス | パラメータ | 内容 |
+|---|---|---|
+| `/` | `month`（`YYYY-MM`） | 指定した月のダッシュボード。サマリー、予算の使用状況と警告、カテゴリ別の支出、直近の収支 |
+| `/transactions` | `month`、`q`（メモのキーワード、100 文字まで）、`type`（`income` / `expense`）、`category`（カテゴリ ID） | 指定した月の収支の一覧（新しい順）。`q`・`type`・`category` で絞り込む |
+| `/trends` | `view`（`yearly` / `weekly`）、`year`（`YYYY`）、`category`（カテゴリ ID） | `yearly`: その年の月別の収支グラフとカテゴリ×月の支出表。`category` を付けるとそのカテゴリだけの月別推移。`weekly`: 直近 12 週の週別の表 |
+| `/budgets` | `month`（`YYYY-MM`） | 指定した月の予算の入力画面 |
+| `/categories` | なし | カテゴリの一覧（収支・予算での使用件数つき） |
+
+- パラメータを省略したときや不正な値のときは、エラーにせず既定の値で表示する。`month` は今月、`year` は今年、`view` は `yearly`、`q`・`type`・`category` は「指定なし」。
+- 表示できる月・年は、今年の前後 10 年（1980〜2050 年の範囲内）。範囲外は今月・今年として扱う。
+- 存在しない URL は「ページが見つかりません」（HTTP 404）。DB に接続できないなどで読み込めないときは、画面の上部にエラーの種類・内容・対処を表示する。
+
+### 7.2 Server Actions（登録・更新・削除）
+| 関数 | ファイル | 引数 | 戻り値 |
+|---|---|---|---|
+| `createTransactionAction` | `src/app/transactions/actions.ts` | `formData` | `TransactionFormState` |
+| `updateTransactionAction` | 同上 | `id`, `formData` | `TransactionFormState` |
+| `deleteTransactionAction` | 同上 | `id` | なし |
+| `createCategoryAction` | `src/app/categories/actions.ts` | `formData` | `CategoryFormState` |
+| `updateCategoryAction` | 同上 | `id`, `formData` | `CategoryFormState` |
+| `deleteCategoryAction` | 同上 | `id` | `{ error?: string }` |
+| `saveBudgetsAction` | `src/app/budgets/actions.ts` | `month`, `formData` | `BudgetFormState` |
+
+戻り値の型は `src/lib/types.ts` にある。成功したときと、エラーがあったときで中身が変わる。
+
+| 型 | 成功したとき | エラーのとき |
+|---|---|---|
+| `TransactionFormState` | `{ savedMonth: "YYYY-MM" }`（保存した収支の月。画面はその月の一覧を表示する） | `{ errors: { 項目名: メッセージ }, values: 入力値 }`（入力値を残して画面に戻す） |
+| `CategoryFormState` | `{ saved: true }` | `{ errors: { 項目名: メッセージ } }` |
+| `BudgetFormState` | `{ saved: true }` | `{ errors: { 入力欄の name: メッセージ } }` |
+
+`errors` のキーは入力欄の名前。画面全体に出すエラーは `form` に入る。
+
+#### 収支の登録・更新（`createTransactionAction` / `updateTransactionAction`）
+| 入力（`formData`） | 必須 | 検証 |
+|---|---|---|
+| `date` | ○ | `YYYY-MM-DD` の実在する日付 |
+| `type` | ○ | `income` か `expense` |
+| `amount` | ○ | 半角の整数、1〜99,999,999 |
+| `categoryId` | ○ | 1 以上の整数。種別と合うカテゴリ（DB の外部キーで確認） |
+| `memo` | | 255 文字まで。空欄は NULL |
+
+- 処理: 登録は `transactions` に INSERT、更新は `id` の行を UPDATE する。
+- エラー: 検証エラー（各項目）／種別に合わないカテゴリ（`categoryId`: 「選んだ種別に合わないカテゴリです。選び直してください」）／更新対象が無い（`form`: 「この収支は既に削除されています」）／その他（`form`: 「保存に失敗しました。もう一度お試しください」）。
+
+#### 収支の削除（`deleteTransactionAction`）
+- 入力: `id`（1 以上の整数。それ以外は何もしない）。
+- 処理: `transactions` から `id` の行を DELETE する。対象が無くてもエラーにしない。画面は、削除の前に確認ダイアログを出す。
+
+#### カテゴリの追加・名前の変更（`createCategoryAction` / `updateCategoryAction`）
+| 入力（`formData`） | 必須 | 検証 |
+|---|---|---|
+| `name` | ○ | 前後の空白（全角を含む）を除いて 1〜50 文字。ほかのカテゴリと重複しない（DB の一意制約で確認） |
+| `type` | 追加のときだけ ○ | `income` か `expense`。変更では使わない（既存の収支と矛盾しないよう、種別は変えられない） |
+
+- 処理: 追加は `categories` に INSERT、変更は `id` の行の `name` だけを UPDATE する。
+- エラー: 検証エラー／同じ名前がある（`name`: 「同じ名前のカテゴリが既にあります」）／変更対象が無い（`form`: 「このカテゴリは既に削除されています」）／その他（`form`）。
+
+#### カテゴリの削除（`deleteCategoryAction`）
+- 入力: `id`（1 以上の整数。それ以外は何もしない）。
+- 処理: `categories` から `id` の行を DELETE する。画面は、削除の前に確認ダイアログを出す。
+- エラー: 収支・予算で使われている（DB の外部キーが拒否する）→ `{ error: "このカテゴリは収支または予算で使われているため、削除できません" }`／その他 →「削除に失敗しました。もう一度お試しください」。
+
+#### 予算の保存（`saveBudgetsAction`）
+| 入力 | 必須 | 検証 |
+|---|---|---|
+| `month`（引数） | ○ | `YYYY-MM`、表示できる範囲の月 |
+| `category-<カテゴリ ID>`（`formData`、支出カテゴリごと） | | 空欄は予算なし。数字（全角・カンマ・「円」・「¥」は可）、1〜99,999,999 |
+
+- 月全体の予算は入力として受け取らない。支出カテゴリ別の予算の合計を、サーバーで計算して保存する（すべて空欄なら月全体も予算なし）。合計が 99,999,999 を超えるとエラー（`total`）。
+- 処理: 対象のカテゴリは DB から読む（収支カテゴリや存在しないカテゴリの値は無視する）。値がある予算は INSERT（すでにあれば UPDATE）、空欄の予算は DELETE する。全体を 1 つのトランザクションで行う。
+- エラー: 検証エラー（各入力欄）／月の指定が不正（`form`: 「月の指定が正しくありません」）／削除されたカテゴリがある（`form`: 「削除されたカテゴリがあります。画面を再読み込みしてください」）／その他（`form`: 「保存に失敗しました。もう一度お試しください」）。
+
+## 8. 非機能要件
 | 区分 | 要件 |
 |---|---|
 | セキュリティ | 認証がないため、だれでも開ける場所には置かない。ローカルでは、開発サーバーと MySQL は 127.0.0.1 だけで待ち受け、同じネットワークの他の機器からも接続できないようにする。AWS では、アプリ（HTTP 80 番）に接続できるのを開発者のパソコンのグローバル IP（/32）だけに制限する。SSH（22 番）は開けず、EC2 の操作は SSM Session Manager で行う。RDS は private subnet に置いて public アクセスを無効にし、EC2 からだけ接続できるようにする。ドメインと証明書がないため通信は HTTP（暗号化なし）で、IP 制限で守る。AWS の DB パスワードは Terraform がランダムに作り、SSM Parameter Store（暗号化）に置く。DB の接続情報は `.env.local`（`.gitignore` 対象）に置き、Git に含めない。SQL は必ずプレースホルダ（`?`）で実行し、SQL インジェクションを防ぐ |
@@ -123,7 +329,7 @@ Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を�
 | 保守性 | TypeScript の型を使い、lint(ESLint)が通る状態を保つ。計算・検証の処理（予算の判定、週・年月の計算、入力の検証など）は Vitest の自動テストで確認し、`npm test` が通る状態を保つ |
 | エラー表示 | データを読み込めなかったときは、誰が見てもエラーと分かる表示を画面の上に出し、その下に詳しい原因（種類: データベースに接続できない / SQL の実行でエラー / その他、エラーの内容、対処）を表示する |
 
-## 8. 開発方針
+## 9. 開発方針
 - **進め方**: 縦に薄く作る。まず「収支を1件登録 → 一覧に出る」を動かし、その後に集計・予算・推移を足す。
 - **Git 運用**: [CLAUDE.md](../CLAUDE.md) のとおり(Issue ファースト、`<type>/<番号>-<説明>` ブランチ、PR 経由、マージは本人)。
 - **Issue の切り方(案)**:
@@ -142,14 +348,14 @@ Docker 上の MySQL に作成する（文字コードは utf8mb4）。認証を�
 - **README に載せるもの**: アプリの概要、使用技術、機能一覧、デモ動画、削除の確認ダイアログの画像（いずれも `docs/images/`）、セットアップ手順。AWS の URL は開発者のパソコンからしか開けないので、画面は動画で示す。画面全体のスクリーンショットは載せない。
   動画は、途中では撮らず、完成した時点で撮る。各機能（F-01〜F-14）の操作に合わせて、どの機能かを示すテロップを入れる。途中の画面確認はプロトタイプで行う。
 
-## 9. 未決定事項
+## 10. 未決定事項
 現在、未決定の事項はない。これまでに決めたことは次のとおり。
 
 - 予算の警告しきい値（80%以上で注意、100%超で警告）と、予算を「全体」と「カテゴリ別」の両方で持つこと: 予算の Issue（#25）で決定
 - 月全体の予算は手で入力せず、カテゴリ別の予算の合計にすること（計算の手間と間違いをなくすため）: #53 で決定。それ以前に保存した月の「月全体の予算」は、その月の予算を保存し直したときに合計で置き換わる
 - テストの範囲: DB を使わない計算・検証の処理だけ Vitest で自動テストを書く。画面の操作と DB を使う処理はブラウザで確認する（#37 で決定）
 
-## 10. 完了の定義
+## 11. 完了の定義
 - F-01〜F-14 が動作する
 - `docker compose up -d` と `npm run dev` だけで、ローカルで動作する
 - [deploy.md](deploy.md) の手順で AWS にデプロイでき、開発者のパソコンからだけ開ける
